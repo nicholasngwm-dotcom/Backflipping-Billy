@@ -4,190 +4,398 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Backflipping Billy</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
 <style>
-  html, body { margin: 0; height: 100%; overflow: hidden; background: #87c8f0; font-family: system-ui, sans-serif; }
+  /* ===== Theme: Billy's outfit =====
+     yellow stripe = primary · blue cap = secondary · red shirt = danger · navy shorts = base
+     green is reserved for success (beaten / unlocked) only. Change colours HERE and nowhere else. */
+  :root {
+    --yellow: #f6c945; --yellow-deep: #b8891a; --yellow-ink: #2b1d00;
+    --blue: #3c7be0;   --blue-deep: #24509e;   --blue-light: #7fb2ff;
+    --red: #e2574c;    --red-deep: #9c2f27;
+    --navy: #1b2240;   --navy-2: #2a3462;      --navy-deep: #11162b;  --navy-edge: #0b1020;
+    --milk: #eef3ff;
+    --green: #41d98a;  --green-ink: #06301a;
+    --text: #f5f7fc;   --muted: #a8b0cc;       --line: rgba(255,255,255,.12);
+    --panel: rgba(27,34,64,.85); --panel-2: rgba(42,52,98,.55);
+    /* roles */
+    --primary: var(--yellow); --primary-edge: var(--yellow-deep); --primary-ink: var(--yellow-ink);
+    --secondary: var(--blue); --secondary-edge: var(--blue-deep);
+    --danger: var(--red);     --danger-edge: var(--red-deep);
+    --neutral: var(--navy-2); --neutral-edge: var(--navy-edge);
+    /* aliases used throughout */
+    --gold: var(--yellow); --gold-ink: var(--yellow-ink); --gold-deep: var(--yellow-deep);
+    /* mode tiers: I blue -> II yellow -> III red -> Infinity milk */
+    --baby: var(--blue-light); --pro: var(--yellow); --chad: var(--red); --god: var(--milk);
+    --radius: 16px;
+    --display: 'Baloo 2', system-ui, sans-serif; --body: 'Nunito', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #87c8f0; font-family: var(--body); color: var(--text); }
   canvas { display: block; }
-  .panel { position: fixed; color: #fff; background: rgba(20,24,40,.6); border-radius: 10px; padding: 10px 14px; pointer-events: none; }
-  #hud { top: 14px; left: 14px; font-weight: 700; font-size: 17px; line-height: 1.55; }
-  #hud small { font-weight: 400; font-size: 15px; }
-  #goal { top: 14px; left: 50%; transform: translateX(-50%); font-size: 18px; font-weight: 800; color: #f6c945; white-space: nowrap; }
-  #help { top: 14px; right: 14px; font-size: 13px; line-height: 1.6; text-align: right; max-width: 330px; }
-  #mode { bottom: 16px; right: 14px; font-size: 14px; font-weight: 700; }
-  #mode.baby { background: rgba(236,120,180,.85); }
-  #mode.pro { background: rgba(30,30,30,.85); color: #f6c945; }
-  #mode.chad { background: rgba(110,60,190,.9); }
-  #mode.god { background: rgba(250,250,245,.95); color: #2c5fb8; }
-  body.inmenu #hud, body.inmenu #goal, body.inmenu #help, body.inmenu #mode { display: none; }
-  #msg { position: fixed; top: 28%; left: 0; right: 0; padding: 0 16px; text-align: center; color: #fff; font-size: clamp(26px, 4.5vw, 44px);
-         font-weight: 800; text-shadow: 3px 3px 0 rgba(0,0,0,.4); pointer-events: none; }
-  #msg .sub { display: block; font-size: 20px; font-weight: 700; opacity: .9; margin-top: 6px; }
-  #banner { position: fixed; top: 18%; width: 100%; text-align: center; color: #fff; pointer-events: none;
-            text-shadow: 3px 3px 0 rgba(0,0,0,.35); transition: opacity .6s; }
-  #banner .num { font-size: 22px; font-weight: 700; color: #f6c945; letter-spacing: 3px; }
-  #banner .name { font-size: 56px; font-weight: 900; }
-  #crosshair { position: fixed; left: 50%; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px;
+  .hidden { display: none !important; }
+  .ico { width: 18px; height: 18px; flex: none; }
+
+  /* ---------- HUD ---------- */
+  .hud { position: fixed; pointer-events: none; z-index: 2; }
+  body.inmenu .hud { display: none; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+          backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); box-shadow: 0 10px 30px rgba(0,0,0,.25); }
+  .pill { background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 8px 16px;
+          font-weight: 800; font-size: 14px; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+  .eyebrow { font-size: 12px; font-weight: 900; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+  .eyebrow.gold { color: var(--gold); }
+
+  #hudLevel { top: 16px; left: 16px; padding: 14px 16px; min-width: 230px; border-top: 4px solid var(--gold); }
+  #controls { border-top: 4px solid var(--blue); }
+  .lvlname { font-family: var(--display); font-size: 24px; font-weight: 800; line-height: 1.1; margin: 2px 0 10px; }
+  .pips { display: flex; gap: 6px; margin-bottom: 12px; }
+  .pips i { height: 6px; flex: 1; border-radius: 3px; background: rgba(255,255,255,.15); }
+  .pips i.done { background: var(--green); }
+  .pips i.cur { background: var(--gold); }
+  .stats { display: flex; gap: 18px; }
+  .stat { display: flex; align-items: center; gap: 7px; font-weight: 900; font-size: 17px; font-variant-numeric: tabular-nums; }
+  .stat .ico { color: var(--muted); }
+  .stat small { font-size: 12px; color: var(--muted); font-weight: 800; }
+
+  #goal { top: 16px; left: 50%; transform: translateX(-50%); color: var(--gold); white-space: nowrap; }
+  #mode { top: 16px; right: 16px; max-width: 46vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mode::before { content: ''; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: currentColor;
+                  margin-right: 8px; vertical-align: 1px; }
+  .mode.baby { color: var(--baby); } .mode.pro { color: var(--pro); } .mode.chad { color: var(--chad); } .mode.god { color: var(--god); }
+
+  #controls { left: 16px; bottom: 16px; padding: 12px 14px; font-size: 13px; font-weight: 700; color: var(--muted);
+              display: grid; gap: 8px; max-width: 380px; }
+  kbd { display: inline-grid; place-items: center; min-width: 24px; height: 24px; padding: 0 6px; margin-right: 3px;
+        border-radius: 6px; background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.2); border-bottom-width: 3px;
+        color: var(--text); font: 800 12px var(--body); }
+  .tip { color: var(--gold); font-weight: 800; }
+  @media (max-width: 760px) { #controls, #goal { display: none; } }
+
+  #lookhint { bottom: 16px; left: 50%; transform: translateX(-50%); }
+  #crosshair { position: fixed; left: 50%; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; z-index: 2;
                border: 3px solid #fff; border-radius: 50%; box-shadow: 0 0 0 2px rgba(0,0,0,.45); pointer-events: none; }
   #crosshair::after { content: ''; position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px 0 0 -2px;
                       background: #fff; border-radius: 50%; }
-  #lookhint { bottom: 16px; left: 50%; transform: translateX(-50%); font-size: 14px; }
-  #charge { position: fixed; left: 50%; bottom: 70px; transform: translateX(-50%); width: min(360px, 80vw);
-            pointer-events: none; text-align: center; color: #fff; font-weight: 800; font-size: 14px;
-            text-shadow: 2px 2px 0 rgba(0,0,0,.4); }
-  #chargeBar { margin-top: 6px; height: 18px; border-radius: 9px; background: rgba(20,24,40,.7);
-               box-shadow: 0 0 0 3px rgba(255,255,255,.85); overflow: hidden; }
-  #chargeFill { height: 100%; width: 0; border-radius: 9px; }
 
-  /* ----- menus ----- */
-  .screen { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
-            background: rgba(20,24,40,.78); color: #fff; text-align: center; padding: 16px; box-sizing: border-box; overflow-y: auto; }
-  .screen.light { background: linear-gradient(180deg, rgba(20,24,40,.15), rgba(20,24,40,.65)); }
-  .screen h1 { font-size: clamp(36px, 8vw, 76px); margin: 0; color: #f6c945; text-shadow: 4px 4px 0 #b4472c, 8px 8px 0 rgba(0,0,0,.25);
-               transform: rotate(-3deg); letter-spacing: 1px; }
-  .screen h2 { font-size: clamp(26px, 5vw, 40px); margin: 0 0 16px; color: #f6c945; }
-  .screen p { margin: 6px 0; font-size: 17px; }
-  .tagline { font-size: 18px; margin: 14px 0 26px !important; text-shadow: 2px 2px 0 rgba(0,0,0,.4); }
-  .stack { display: flex; flex-direction: column; gap: 12px; width: min(320px, 90vw); }
-  button { font: inherit; cursor: pointer; border: 0; border-radius: 14px; padding: 14px 22px; color: #fff;
-           transition: transform .1s, filter .1s; }
-  button:hover { transform: scale(1.05); filter: brightness(1.1); }
-  button:active { transform: scale(.97); }
-  .btn { background: #3c7be0; font-size: 20px; font-weight: 800; box-shadow: 0 5px 0 rgba(0,0,0,.3); }
-  .btn.play { background: #e2574c; font-size: 26px; }
-  .btn.grey { background: #59607a; }
-  .modes { display: grid; grid-template-columns: repeat(2, minmax(0, 300px)); gap: 16px; margin-top: 10px; justify-content: center; }
-  @media (max-width: 640px) { .modes { grid-template-columns: minmax(0, 340px); } }
-  .modes button { display: flex; flex-direction: column; justify-content: center; min-height: 120px; }
-  .modes .tier { font-size: 12px; font-weight: 800; letter-spacing: 2px; opacity: .75; }
-  .modes b { display: block; font-size: 20px; margin: 4px 0; }
-  .modes span { font-size: 14px; opacity: .95; line-height: 1.4; }
-  .m-baby { background: #ec78b4; }
-  .m-pro { background: #1e1e1e; color: #f6c945; box-shadow: 0 0 0 3px #f6c945 inset; }
-  .m-chad { background: #6e3cbe; box-shadow: 0 0 0 3px #c9a8ff inset; }
-  .m-god { background: #fafaf5; color: #2c5fb8; box-shadow: 0 0 0 4px #2c5fb8 inset, 0 0 24px rgba(255,255,255,.6); }
-  .best { margin-top: 22px; font-size: 14px; opacity: .85; line-height: 1.6; }
-  .card { background: rgba(255,255,255,.08); border-radius: 14px; padding: 18px 22px; width: min(460px, 92vw); box-sizing: border-box; text-align: left; }
-  .card ul { margin: 0; padding-left: 20px; line-height: 1.75; font-size: 16px; }
-  .row { display: grid; grid-template-columns: 1fr 1.4fr 52px; align-items: center; gap: 12px; margin: 10px 0; font-size: 16px; }
-  .row input[type=range] { width: 100%; accent-color: #f6c945; }
-  .row output { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
-  .row.check { grid-template-columns: 1fr auto; }
-  .row.check input { width: 20px; height: 20px; accent-color: #f6c945; }
-  .gap { height: 16px; }
-  #end table { margin: 14px auto; border-collapse: collapse; font-size: 17px; }
-  #end td { padding: 4px 14px; border-bottom: 1px solid rgba(255,255,255,.15); }
-  #end td:last-child { text-align: right; font-weight: 700; }
-  .hidden { display: none !important; }
+  #charge { position: fixed; left: 50%; bottom: 86px; transform: translateX(-50%); width: min(380px, 80vw); pointer-events: none; z-index: 2; }
+  .chargeHead { display: flex; justify-content: space-between; font-weight: 900; font-size: 13px; letter-spacing: .12em;
+                text-transform: uppercase; margin-bottom: 6px; text-shadow: 0 2px 0 rgba(0,0,0,.4); }
+  #chargePct { font-variant-numeric: tabular-nums; }
+  #chargeBar { position: relative; height: 20px; border-radius: 10px; background: var(--panel); border: 2px solid rgba(255,255,255,.9);
+               overflow: hidden; box-shadow: 0 6px 18px rgba(0,0,0,.3); }
+  #chargeFill { height: 100%; width: 0; }
+  .ticks { position: absolute; inset: 0;
+           background: repeating-linear-gradient(90deg, transparent 0 calc(10% - 2px), rgba(0,0,0,.35) calc(10% - 2px) 10%); }
+
+  #msg { position: fixed; top: 26%; left: 0; right: 0; padding: 0 16px; text-align: center; pointer-events: none; z-index: 3;
+         font-family: var(--display); font-weight: 800; font-size: clamp(28px, 5vw, 52px); line-height: 1.05; color: #fff;
+         text-shadow: 0 4px 0 rgba(0,0,0,.35); }
+  #msg .sub { display: inline-block; margin-top: 14px; font-family: var(--body); font-size: 14px; font-weight: 900; letter-spacing: .12em;
+              text-transform: uppercase; background: var(--red); color: #fff; padding: 7px 16px; border-radius: 999px; text-shadow: none; }
+  #msg .sub.ok { background: var(--green); color: var(--green-ink); }
+
+  #banner { position: fixed; top: 16%; width: 100%; text-align: center; pointer-events: none; z-index: 3; transition: opacity .6s; }
+  #banner .num { font-size: 15px; font-weight: 900; letter-spacing: .3em; text-transform: uppercase; color: var(--gold);
+                 text-shadow: 0 2px 0 rgba(0,0,0,.4); }
+  #banner .name { font-family: var(--display); font-size: clamp(40px, 7vw, 68px); font-weight: 800; color: #fff; line-height: 1;
+                  text-shadow: 0 5px 0 rgba(0,0,0,.3); }
+
+  #toast { position: fixed; top: 70px; right: 16px; z-index: 7; display: flex; gap: 12px; align-items: center; padding: 12px 18px 12px 14px;
+           border-radius: 14px; background: var(--panel); border: 1px solid var(--gold); text-align: left;
+           box-shadow: 0 0 0 4px rgba(255,201,60,.15), 0 10px 30px rgba(0,0,0,.35); animation: toastIn .45s cubic-bezier(.2,1.4,.4,1); }
+  @keyframes toastIn { from { transform: translateY(-14px) scale(.96); opacity: 0; } }
+  #toast .ico { width: 32px; height: 32px; color: var(--gold); }
+  #toast b { display: block; font-size: 11px; font-weight: 900; letter-spacing: .14em; text-transform: uppercase; color: var(--gold); }
+  #toast span { font-family: var(--display); font-size: 20px; font-weight: 800; }
+
+  /* ---------- Screens ---------- */
+  .screen { position: fixed; inset: 0; z-index: 5; display: flex; flex-direction: column; align-items: center; justify-content: center;
+            gap: 22px; padding: 28px 16px; overflow-y: auto; text-align: center;
+            background:
+              radial-gradient(ellipse at 12% 0%, rgba(60,123,224,.45), transparent 55%),
+              radial-gradient(ellipse at 90% 100%, rgba(226,87,76,.28), transparent 55%),
+              radial-gradient(ellipse at 100% 15%, rgba(246,201,69,.14), transparent 45%),
+              rgba(17,22,43,.92); }
+  #mainMenu { align-items: flex-start; text-align: left; padding-left: max(24px, 8vw);
+              background: linear-gradient(90deg, rgba(17,22,43,.92) 0%, rgba(17,22,43,.62) 40%, rgba(17,22,43,0) 72%); }
+  @media (max-width: 800px) { #mainMenu { align-items: center; text-align: center; padding-left: 16px; background: rgba(17,22,43,.75); } }
+  .title { font-family: var(--display); font-weight: 800; line-height: .86; margin: 8px 0 0; font-size: clamp(54px, 9vw, 108px);
+           color: var(--yellow); text-shadow: 0 5px 0 var(--red-deep), 0 12px 0 rgba(0,0,0,.25); }
+  .title .word { display: block; }
+  .title .word:last-child { color: #fff; text-shadow: 0 5px 0 var(--blue-deep), 0 12px 0 rgba(0,0,0,.25); }
+  .title .l { display: inline-block; }
+  .menuStack { display: flex; flex-direction: column; gap: 10px; width: min(330px, 100%); }
+
+  /* solid buttons with a chunky bottom edge. default = secondary (blue cap) */
+  .btn { --b: var(--secondary); --e: var(--secondary-edge); font: 800 18px var(--body); cursor: pointer; color: #fff; background: var(--b);
+         border: 0; border-radius: 14px; padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+         box-shadow: 0 5px 0 var(--e), 0 10px 20px rgba(0,0,0,.25); text-shadow: 0 1px 0 rgba(0,0,0,.25);
+         transition: transform .12s, filter .12s, box-shadow .12s; }
+  .btn:hover { filter: brightness(1.12); transform: translateY(-2px); box-shadow: 0 7px 0 var(--e), 0 14px 24px rgba(0,0,0,.3); }
+  .btn:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--e), 0 4px 10px rgba(0,0,0,.25); }
+  .btn:focus-visible, .modeCard:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+  .btn.primary { --b: var(--primary); --e: var(--primary-edge); color: var(--primary-ink); text-shadow: none; justify-content: center; }
+  .btn.big { font-family: var(--display); font-size: 28px; padding: 12px 22px; }
+  .btn.ghost { --b: var(--neutral); --e: var(--neutral-edge); justify-content: center; }
+  .btn.danger { --b: var(--danger); --e: var(--danger-edge); }
+
+  /* ---------- menu backflips ---------- */
+  @keyframes bbFlip {
+    0%   { transform: perspective(700px) translateY(0)     rotateX(0deg); }
+    30%  { transform: perspective(700px) translateY(-22px) rotateX(120deg); }
+    60%  { transform: perspective(700px) translateY(-18px) rotateX(250deg); }
+    85%  { transform: perspective(700px) translateY(3px)   rotateX(350deg); }
+    100% { transform: perspective(700px) translateY(0)     rotateX(360deg); }
+  }
+  @keyframes bbFlipBig {
+    0%   { transform: perspective(1200px) translateY(0)     rotateX(0deg); }
+    35%  { transform: perspective(1200px) translateY(-70px) rotateX(140deg); }
+    70%  { transform: perspective(1200px) translateY(-40px) rotateX(290deg); }
+    88%  { transform: perspective(1200px) translateY(8px)   rotateX(355deg); }
+    100% { transform: perspective(1200px) translateY(0)     rotateX(360deg); }
+  }
+  .flipping { animation: bbFlip .65s cubic-bezier(.3,.7,.4,1); }
+  .flipping-big { animation: bbFlipBig 1s cubic-bezier(.3,.7,.4,1); }
+  .title .l.flipping { animation-duration: .55s; }
+  @media (prefers-reduced-motion: reduce) { .flipping, .flipping-big { animation: none; } }
+  .btn .count { font-size: 13px; font-weight: 900; background: rgba(0,0,0,.25); padding: 3px 10px; border-radius: 999px; }
+
+  .panelHead h2 { font-family: var(--display); font-size: clamp(36px, 6vw, 54px); margin: 4px 0 0; line-height: 1; }
+  .muted { color: var(--muted); margin: 8px 0 0; font-weight: 700; }
+  .row-btns { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+  .row-btns .btn { min-width: 150px; justify-content: center; }
+  .stack { display: flex; flex-direction: column; gap: 10px; width: min(330px, 100%); }
+  .stack .btn { justify-content: center; }
+
+  .modes { display: grid; grid-template-columns: repeat(2, minmax(0, 330px)); gap: 14px; }
+  @media (max-width: 720px) { .modes { grid-template-columns: minmax(0, 380px); } }
+  .modeCard { position: relative; text-align: left; font-family: var(--body); color: var(--text); cursor: pointer; padding: 18px 18px 16px;
+              border-radius: 18px; border: 2px solid color-mix(in srgb, var(--c) 60%, transparent);
+              background: linear-gradient(155deg, color-mix(in srgb, var(--c) 34%, var(--navy)) 0%, var(--navy) 85%);
+              box-shadow: 0 6px 0 color-mix(in srgb, var(--c) 35%, var(--navy-edge)), 0 12px 26px rgba(0,0,0,.3);
+              display: flex; flex-direction: column; gap: 6px; min-height: 142px; transition: transform .12s, filter .12s; }
+  .modeCard:hover { transform: translateY(-3px); filter: brightness(1.12); }
+  .m-baby { --c: var(--baby); } .m-pro { --c: var(--pro); } .m-chad { --c: var(--chad); } .m-god { --c: var(--god); }
+  .tier { font-size: 12px; font-weight: 900; letter-spacing: .16em; text-transform: uppercase; color: var(--c); }
+  .mname { font-family: var(--display); font-size: 24px; font-weight: 800; line-height: 1.05; padding-right: 70px; }
+  .mdesc { font-size: 14px; color: var(--muted); font-weight: 700; line-height: 1.4; }
+  .beaten { position: absolute; top: 14px; right: 14px; display: none; align-items: center; gap: 4px; font-size: 11px; font-weight: 900;
+            letter-spacing: .1em; text-transform: uppercase; background: var(--green); color: var(--green-ink); padding: 4px 9px; border-radius: 999px; }
+  .beaten .ico { width: 12px; height: 12px; }
+  .modeCard.done .beaten { display: inline-flex; }
+
+  .achWrap { width: min(580px, 100%); display: grid; gap: 12px; }
+  .achProgress { display: flex; align-items: center; gap: 14px; font-weight: 900; font-variant-numeric: tabular-nums; }
+  .achBar { flex: 1; height: 10px; border-radius: 5px; background: rgba(255,255,255,.12); overflow: hidden; }
+  #achFill { height: 100%; width: 0; background: var(--gold); transition: width .5s; }
+  .ach { display: grid; grid-template-columns: 54px 1fr auto; gap: 14px; align-items: center; text-align: left; padding: 14px 16px;
+         border-radius: 16px; background: var(--panel-2); border: 1px solid var(--line); }
+  .ach .badge { width: 54px; height: 54px; border-radius: 14px; display: grid; place-items: center; background: rgba(255,255,255,.07); color: var(--muted); }
+  .ach .badge svg { width: 26px; height: 26px; }
+  .ach.done { border: 2px solid color-mix(in srgb, var(--c) 60%, transparent);
+              background: linear-gradient(155deg, color-mix(in srgb, var(--c) 28%, var(--navy)), var(--navy) 80%); }
+  .ach.done .badge { background: var(--c); color: var(--navy-deep); }
+  .ach:not(.done) h3 { color: var(--muted); }
+  .ach h3 { margin: 0; font-family: var(--display); font-size: 21px; line-height: 1.1; }
+  .ach p { margin: 3px 0 0; font-size: 13px; color: var(--muted); font-weight: 700; }
+  .ach .meta { font-size: 12px; font-weight: 800; color: var(--muted); text-align: right; line-height: 1.55; font-variant-numeric: tabular-nums; }
+  .ach .state { font-weight: 900; letter-spacing: .1em; text-transform: uppercase; }
+  .ach.done .state { color: var(--green); }
+  @media (max-width: 520px) { .ach { grid-template-columns: 46px 1fr; } .ach .badge { width: 46px; height: 46px; }
+                              .ach .meta { grid-column: 2; text-align: left; } }
+
+  .sheet { width: min(540px, 100%); text-align: left; padding: 20px 22px; border-radius: 18px; background: var(--panel-2); border: 1px solid var(--line); }
+  .sheet ul { margin: 0; padding-left: 18px; line-height: 1.8; font-weight: 700; color: var(--text); }
+  .sheet li b { color: var(--gold); }
+  .sheet h3 { margin: 0 0 6px; font-size: 12px; font-weight: 900; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+  .sheet .sep { height: 1px; background: var(--line); margin: 16px 0; }
+  .setRow { display: grid; grid-template-columns: 1fr 1.3fr 58px; align-items: center; gap: 14px; margin: 12px 0; font-weight: 800; }
+  .setRow output { text-align: right; font-variant-numeric: tabular-nums; color: var(--gold); }
+  .setRow.check { grid-template-columns: 1fr auto; }
+  .setRow.check input { width: 20px; height: 20px; accent-color: var(--gold); }
+  input[type=range] { width: 100%; accent-color: var(--gold); }
+
+  .prizeIcon { width: 88px; height: 88px; color: var(--gold); filter: drop-shadow(0 6px 0 var(--gold-deep)); }
+  .unlock { display: inline-flex; gap: 10px; align-items: center; padding: 10px 16px; border-radius: 14px; border: 1px solid var(--gold);
+            background: rgba(255,201,60,.1); font-weight: 800; }
+  .unlock .ico { color: var(--gold); width: 22px; height: 22px; }
+  .endTable { width: min(460px, 100%); border-collapse: collapse; font-weight: 800; }
+  .endTable td { padding: 9px 4px; border-bottom: 1px solid var(--line); text-align: left; }
+  .endTable td:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+  .endTable tr.total td { color: var(--gold); }
 </style>
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
 </script>
 </head>
 <body class="inmenu">
-<div id="goal" class="panel">🏆 Reach the end for a grand prize!</div>
-<div id="hud" class="panel">Level <span id="lvl">1</span>/<span id="lvlcount">3</span> · <span id="lvlname"></span><br>
-  💀 Deaths: <span id="deaths">0</span> <small>⏱ <span id="time">0:00.0</span></small></div>
-<div id="help" class="panel">WASD move · Mouse look · R restart · Esc pause · Shift free mouse<br>
-  <b>Hold Space</b> to charge, <b>release</b> to backflip. Power goes up AND down!<br>
-  <b>Billy flips AWAY from where he faces.</b><br><span id="tip"></span></div>
-<div id="mode" class="panel"></div>
+
+<!-- ================= HUD ================= -->
+<div id="hudLevel" class="hud card">
+  <div class="eyebrow">Level <span id="lvl">1</span> / <span id="lvlcount">3</span></div>
+  <div class="lvlname" id="lvlname"></div>
+  <div class="pips" id="pips"></div>
+  <div class="stats">
+    <div class="stat">
+      <svg class="ico" viewBox="0 0 24 24"><path fill="currentColor" fill-rule="evenodd" d="M12 2a8 8 0 0 0-8 8c0 2.6 1.2 4.6 3 5.8V19a1 1 0 0 0 1 1h1v2h2v-2h2v2h2v-2h1a1 1 0 0 0 1-1v-3.2c1.8-1.2 3-3.2 3-5.8a8 8 0 0 0-8-8Zm-3 7.5a1.8 1.8 0 1 0 0 3.6 1.8 1.8 0 0 0 0-3.6Zm6 0a1.8 1.8 0 1 0 0 3.6 1.8 1.8 0 0 0 0-3.6Z"/></svg>
+      <span id="deaths">0</span><small>deaths</small>
+    </div>
+    <div class="stat">
+      <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+      <span id="time">0:00.0</span>
+    </div>
+  </div>
+</div>
+<div id="goal" class="hud pill">Reach the end for a grand prize</div>
+<div id="mode" class="hud pill mode"></div>
+<div id="controls" class="hud card">
+  <div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> <b>Move</b> &nbsp; Mouse <b>Look</b></div>
+  <div><kbd>Space</kbd> Hold to <b>charge</b>, release to <b>backflip</b></div>
+  <div><kbd>R</kbd> Restart &nbsp; <kbd>Esc</kbd> Pause &nbsp; <kbd>Shift</kbd> Free mouse</div>
+  <div class="tip" id="tip"></div>
+</div>
+<div id="lookhint" class="hud pill hidden">Mouse free. Press Shift or click to recapture.</div>
 <div id="crosshair" class="hidden"></div>
 <div id="banner"></div>
-<div id="charge" class="hidden"><div>BACKFLIP POWER <span id="chargePct">0%</span></div>
-  <div id="chargeBar"><div id="chargeFill"></div></div></div>
+<div id="charge" class="hidden">
+  <div class="chargeHead"><span>Backflip power</span><span id="chargePct">0%</span></div>
+  <div id="chargeBar"><div id="chargeFill"></div><div class="ticks"></div></div>
+</div>
 <div id="msg"></div>
-<div id="lookhint" class="panel hidden">🖱 Mouse free · press Shift or click to recapture</div>
+<div id="toast" class="hidden"></div>
 
-<!-- MAIN MENU -->
-<div id="mainMenu" class="screen light">
-  <h1>Backflipping Billy</h1>
-  <p class="tagline">A game about a kid who can only backflip. You will hate it.</p>
-  <div class="stack">
-    <button class="btn play" data-go="modeMenu">▶ Play</button>
-    <button class="btn" data-go="howMenu">❓ How to Play</button>
-    <button class="btn grey" id="btnSettingsMain">⚙ Settings</button>
+<!-- ================= MAIN MENU ================= -->
+<div id="mainMenu" class="screen">
+  <div>
+    <h1 class="title" id="title"><span class="word">Backflipping</span><span class="word">Billy</span></h1>
   </div>
-  <div class="best" id="bestText"></div>
+  <div class="menuStack">
+    <button class="btn primary big" data-go="modeMenu">Play</button>
+    <button class="btn" data-go="achMenu">Achievements <span class="count" id="achCount">0/4</span></button>
+    <button class="btn" data-go="howMenu">How to Play</button>
+    <button class="btn" id="btnSettingsMain">Settings</button>
+  </div>
 </div>
 
-<!-- MODE SELECT -->
+<!-- ================= MODE SELECT ================= -->
 <div id="modeMenu" class="screen hidden">
-  <h2>Choose your skill level</h2>
-  <p>This choice is locked for the whole run. Choose wisely.</p>
-  <div class="gap"></div>
+  <div class="panelHead">
+    <div class="eyebrow">Choose your difficulty</div>
+    <h2>Select a mode</h2>
+    <p class="muted">Locked in for the whole run. Choose wisely.</p>
+  </div>
   <div class="modes">
-    <button class="m-baby" data-mode="baby"><span class="tier">TIER 1</span><b>👶 Baby Gamer</b>
-      <span>No shift lock. For baby gamers.</span></button>
-    <button class="m-pro" data-mode="pro"><span class="tier">TIER 2</span><b>😎 Pro Elite Gamer</b>
-      <span>Shift lock. Billy faces where you look.</span></button>
-    <button class="m-chad" data-mode="chad"><span class="tier">TIER 3</span><b>🗿 Chad Pro Elite Gamer</b>
-      <span>No shift lock + inverted controls.</span></button>
-    <button class="m-god" data-mode="god"><span class="tier">TIER ∞</span><b>🥛 Chad Elite God Level Pro Maxxing Gamer</b>
-      <span>No mouse. Camera stuck behind Billy. He drank the milk under the sink, so he's confused: controls inverted.</span></button>
+    <button class="modeCard m-baby" data-mode="baby">
+      <span class="tier">Tier I</span><span class="mname">Baby Gamer</span>
+      <span class="mdesc">No shift lock. Normal controls. For baby gamers.</span>
+      <span class="beaten"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Beaten</span>
+    </button>
+    <button class="modeCard m-pro" data-mode="pro">
+      <span class="tier">Tier II</span><span class="mname">Pro Elite Gamer</span>
+      <span class="mdesc">Shift lock. Billy always faces where you look.</span>
+      <span class="beaten"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Beaten</span>
+    </button>
+    <button class="modeCard m-chad" data-mode="chad">
+      <span class="tier">Tier III</span><span class="mname">Chad Pro Elite Gamer</span>
+      <span class="mdesc">No shift lock, and the controls are inverted.</span>
+      <span class="beaten"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Beaten</span>
+    </button>
+    <button class="modeCard m-god" data-mode="god">
+      <span class="tier">Tier Infinity</span><span class="mname">Chad Elite God Level Pro Maxxing Gamer</span>
+      <span class="mdesc">No mouse. Camera stuck behind Billy. He drank the milk under the sink, so he's confused: controls inverted.</span>
+      <span class="beaten"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Beaten</span>
+    </button>
   </div>
-  <div class="gap"></div>
-  <button class="btn grey" data-go="mainMenu">← Back</button>
+  <button class="btn ghost" data-go="mainMenu">Back</button>
 </div>
 
-<!-- HOW TO PLAY -->
+<!-- ================= ACHIEVEMENTS ================= -->
+<div id="achMenu" class="screen hidden">
+  <div class="panelHead">
+    <div class="eyebrow">Your progress</div>
+    <h2>Achievements</h2>
+    <p class="muted">Beat every level in a mode to unlock its achievement.</p>
+  </div>
+  <div class="achWrap">
+    <div class="achProgress"><div class="achBar"><div id="achFill"></div></div><span id="achText">0 / 4</span></div>
+    <div id="achList" class="achWrap"></div>
+  </div>
+  <div class="row-btns">
+    <button class="btn ghost" data-go="mainMenu">Back</button>
+    <button class="btn ghost danger" id="btnResetProgress">Reset progress</button>
+  </div>
+</div>
+
+<!-- ================= HOW TO PLAY ================= -->
 <div id="howMenu" class="screen hidden">
-  <h2>How to Play</h2>
-  <div class="card"><ul>
-    <li><b>WASD</b> to walk, <b>mouse</b> to look around.</li>
-    <li>Billy <b>cannot jump</b>. He can only <b>backflip</b>.</li>
-    <li><b>Hold Space</b> to charge, <b>release</b> to flip. The power bar goes up <i>and back down</i>, forever.</li>
-    <li>Billy flips <b>away</b> from where he faces. To go forward, face the camera (press <b>S</b>), then flip.</li>
-    <li>Land upright, or Billy lands on his head.</li>
-    <li>Die and you restart the level. Beat a level and it's saved.</li>
-    <li><b>R</b> restarts the level, <b>Esc</b> pauses, <b>Shift</b> frees/recaptures the mouse.</li>
-    <li><b>Modes:</b> 👶 Baby (normal) · 😎 Pro Elite (shift lock) · 🗿 Chad (inverted controls) ·
-      🥛 God Level Maxxing (no mouse, camera stuck behind Billy, inverted tank controls).</li>
-  </ul></div>
-  <div class="gap"></div>
-  <button class="btn grey" data-go="mainMenu">← Back</button>
+  <div class="panelHead"><div class="eyebrow">The rules</div><h2>How to Play</h2></div>
+  <div class="sheet">
+    <h3>Controls</h3>
+    <ul>
+      <li><b>WASD</b> to walk, <b>mouse</b> to look around.</li>
+      <li><b>Hold Space</b> to charge, <b>release</b> to backflip. The power bar goes up and back down, forever.</li>
+      <li><b>R</b> restarts the level, <b>Esc</b> pauses, <b>Shift</b> frees or recaptures the mouse.</li>
+    </ul>
+    <div class="sep"></div>
+    <h3>Rules</h3>
+    <ul>
+      <li>Billy <b>cannot jump</b>. He can only backflip, and he flips <b>away</b> from where he faces.</li>
+      <li>To go forward, face the camera (press S), then flip.</li>
+      <li>Land upright, or Billy lands on his head.</li>
+      <li>Die and you restart the level. Beat a level and it's saved.</li>
+      <li>Beat all levels in a mode to unlock that mode's achievement.</li>
+    </ul>
+  </div>
+  <button class="btn ghost" data-go="mainMenu">Back</button>
 </div>
 
-<!-- SETTINGS -->
+<!-- ================= SETTINGS ================= -->
 <div id="settingsMenu" class="screen hidden">
-  <h2>⚙ Settings</h2>
-  <div class="card">
-    <div class="row"><label for="sMaster">🔊 Master volume</label><input id="sMaster" type="range" min="0" max="100"><output id="oMaster"></output></div>
-    <div class="row"><label for="sMusic">🎵 Music volume</label><input id="sMusic" type="range" min="0" max="100"><output id="oMusic"></output></div>
-    <div class="row"><label for="sSfx">💥 Sound effects</label><input id="sSfx" type="range" min="0" max="100"><output id="oSfx"></output></div>
-    <div class="gap"></div>
-    <div class="row"><label for="sSens">🖱 Mouse sensitivity</label><input id="sSens" type="range" min="0.2" max="3" step="0.05"><output id="oSens"></output></div>
-    <div class="row check"><label for="sInvert">Invert mouse Y</label><input id="sInvert" type="checkbox"></div>
+  <div class="panelHead"><div class="eyebrow">Preferences</div><h2>Settings</h2></div>
+  <div class="sheet">
+    <h3>Sound</h3>
+    <div class="setRow"><label for="sMaster">Master volume</label><input id="sMaster" type="range" min="0" max="100"><output id="oMaster"></output></div>
+    <div class="setRow"><label for="sMusic">Music</label><input id="sMusic" type="range" min="0" max="100"><output id="oMusic"></output></div>
+    <div class="setRow"><label for="sSfx">Sound effects</label><input id="sSfx" type="range" min="0" max="100"><output id="oSfx"></output></div>
+    <div class="sep"></div>
+    <h3>Mouse</h3>
+    <div class="setRow"><label for="sSens">Sensitivity</label><input id="sSens" type="range" min="0.2" max="3" step="0.05"><output id="oSens"></output></div>
+    <div class="setRow check"><label for="sInvert">Invert vertical look</label><input id="sInvert" type="checkbox"></div>
+    <div class="sep"></div>
+    <h3>Fun</h3>
+    <div class="setRow check"><label for="sFlips">Menu backflips</label><input id="sFlips" type="checkbox"></div>
   </div>
-  <div class="gap"></div>
-  <div class="stack">
-    <button class="btn grey" id="btnSettingsReset">Reset to defaults</button>
-    <button class="btn" id="btnSettingsBack">← Back</button>
+  <div class="row-btns">
+    <button class="btn ghost" id="btnSettingsReset">Reset to defaults</button>
+    <button class="btn primary" id="btnSettingsBack">Done</button>
   </div>
 </div>
 
-<!-- PAUSE -->
+<!-- ================= PAUSE ================= -->
 <div id="pauseMenu" class="screen hidden">
-  <h2>Paused</h2>
-  <p>Taking a break from failing?</p>
-  <div class="gap"></div>
+  <div class="panelHead"><div class="eyebrow">Game paused</div><h2>Paused</h2><p class="muted">Taking a break from failing?</p></div>
   <div class="stack">
-    <button class="btn play" id="btnResume">▶ Resume</button>
-    <button class="btn" id="btnRestartLvl">↺ Restart level</button>
-    <button class="btn grey" id="btnSettingsPause">⚙ Settings</button>
-    <button class="btn grey" id="btnQuit">🏠 Main menu</button>
+    <button class="btn primary big" id="btnResume">Resume</button>
+    <button class="btn" id="btnRestartLvl">Restart level</button>
+    <button class="btn" id="btnSettingsPause">Settings</button>
+    <button class="btn ghost" id="btnQuit">Main menu</button>
   </div>
 </div>
 
-<!-- END -->
+<!-- ================= END ================= -->
 <div id="end" class="screen hidden">
-  <h1>🏆 GRAND PRIZE 🏆</h1>
-  <div class="gap"></div>
-  <p id="endMode" style="font-size:20px"></p>
-  <table id="endTable"></table>
-  <p>Your prize: a trophy made of pure pixels. Worth every death.</p>
-  <div class="gap"></div>
-  <div class="stack">
-    <button class="btn play" data-go="modeMenu">Play again</button>
-    <button class="btn grey" data-go="mainMenu">🏠 Main menu</button>
+  <svg class="prizeIcon" viewBox="0 0 24 24" fill="currentColor"><path d="M7 3h10v2h3a1 1 0 0 1 1 1v2a5 5 0 0 1-4.6 5A5 5 0 0 1 13 15.9V18h3a1 1 0 0 1 1 1v2H7v-2a1 1 0 0 1 1-1h3v-2.1A5 5 0 0 1 7.6 13 5 5 0 0 1 3 8V6a1 1 0 0 1 1-1h3V3Zm10 4v3.9A3 3 0 0 0 19 8V7h-2ZM5 7v1a3 3 0 0 0 2 2.9V7H5Z"/></svg>
+  <div class="panelHead"><div class="eyebrow gold">You actually did it</div><h2>Grand Prize</h2><p class="muted" id="endMode"></p></div>
+  <div id="endUnlock" class="unlock hidden"></div>
+  <table class="endTable" id="endTable"></table>
+  <p class="muted">Your prize: a trophy made of pure pixels. Worth every death.</p>
+  <div class="row-btns">
+    <button class="btn primary" data-go="modeMenu">Play again</button>
+    <button class="btn" data-go="achMenu">Achievements</button>
+    <button class="btn ghost" data-go="mainMenu">Main menu</button>
   </div>
 </div>
 
@@ -333,30 +541,43 @@ function pickInsult(cause) {
 }
 
 // ---------- Settings (saved in browser) ----------
-const DEFAULTS = { master: 80, music: 50, sfx: 80, sens: 1, invertY: false };
+const DEFAULTS = { master: 80, music: 50, sfx: 80, sens: 1, invertY: false, menuFlips: true };
 const settings = { ...DEFAULTS };
 try { Object.assign(settings, JSON.parse(localStorage.getItem('bb_settings') || '{}')); } catch (e) {}
 function saveSettings() { try { localStorage.setItem('bb_settings', JSON.stringify(settings)); } catch (e) {} }
-let best = {};
-try { best = JSON.parse(localStorage.getItem('bb_best2') || '{}'); } catch (e) {}
+// ---------- Achievements / progress (saved in browser) ----------
+// progress[modeKey] = { beatenAt, bestDeaths, bestTime, clears } - only exists once that mode is beaten
+let progress = {};
+try { progress = JSON.parse(localStorage.getItem('bb_progress') || '{}') || {}; } catch (e) {}
+try { // migrate older best-run records (those only existed for beaten modes)
+  const old = JSON.parse(localStorage.getItem('bb_best2') || '{}');
+  for (const k in old) if (!progress[k]) progress[k] = { beatenAt: null, bestDeaths: old[k].deaths, bestTime: old[k].time, clears: 1 };
+} catch (e) {}
+function saveProgress() {
+  try { localStorage.setItem('bb_progress', JSON.stringify(progress)); localStorage.removeItem('bb_best2'); } catch (e) {}
+}
 
 // ---------- Game modes ----------
 //  shiftLock: Billy faces the camera direction (Roblox shift lock)
 //  invert:    WASD inverted (W<->S, A<->D)
 //  tank:      no mouse turning; A/D rotate Billy, W/S walk; camera locked behind Billy
 const MODES = {
-  baby: { name: '👶 Baby Gamer', badge: '👶 Baby Gamer · No Shift Lock', shiftLock: false, invert: false, tank: false,
+  baby: { name: 'Baby Gamer', tier: 'Tier I', badge: 'Baby Gamer', shiftLock: false, invert: false, tank: false,
           tip: 'Tip: press S to face the camera, then flip.',
-          end: '👶 Beaten in Baby mode. Cute. Now try a real mode.' },
-  pro:  { name: '😎 Pro Elite Gamer', badge: '😎 Pro Elite Gamer · Shift Lock', shiftLock: true, invert: false, tank: false,
+          achTitle: 'Baby Steps', achDesc: 'Beat every level in Baby Gamer mode.',
+          end: 'Beaten in Baby Gamer mode. Cute. Now try a real mode.' },
+  pro:  { name: 'Pro Elite Gamer', tier: 'Tier II', badge: 'Pro Elite Gamer · Shift Lock', shiftLock: true, invert: false, tank: false,
           tip: 'Shift lock: Billy faces where you look, so flips go toward the camera.',
-          end: '😎 Beaten as a Pro Elite Gamer. Respectable.' },
-  chad: { name: '🗿 Chad Pro Elite', badge: '🗿 Chad Pro Elite Gamer · Inverted', shiftLock: false, invert: true, tank: false,
+          achTitle: 'Shift Happens', achDesc: 'Beat every level in Pro Elite Gamer mode.',
+          end: 'Beaten as a Pro Elite Gamer. Respectable.' },
+  chad: { name: 'Chad Pro Elite Gamer', tier: 'Tier III', badge: 'Chad Pro Elite Gamer · Inverted', shiftLock: false, invert: true, tank: false,
           tip: 'Controls inverted: W is S, A is D. Good luck.',
-          end: '🗿 Beaten as a Chad Pro Elite Gamer. Your brain is permanently upside down.' },
-  god:  { name: '🥛 God Level Maxxing', badge: '🥛 Chad Elite God Level Pro Maxxing Gamer · Milk-confused', shiftLock: false, invert: true, tank: true,
+          achTitle: 'Upside Down Brain', achDesc: 'Beat every level in Chad Pro Elite Gamer mode.',
+          end: 'Beaten as a Chad Pro Elite Gamer. Your brain is permanently upside down.' },
+  god:  { name: 'Chad Elite God Level Pro Maxxing Gamer', tier: 'Tier Infinity', badge: 'God Level Maxxing · Milk-confused', shiftLock: false, invert: true, tank: true,
           tip: 'No mouse. A/D turn Billy, W/S walk, all inverted (milk). Camera is stuck behind him.',
-          end: '🥛 Beaten as a CHAD ELITE GOD LEVEL PRO MAXXING GAMER. Billy has finally digested the milk. Absolute legend.' },
+          achTitle: 'Lactose Legend', achDesc: 'Beat every level in Chad Elite God Level Pro Maxxing Gamer mode.',
+          end: 'Beaten as a CHAD ELITE GOD LEVEL PRO MAXXING GAMER. Billy has finally digested the milk. Absolute legend.' },
 };
 const TANK_TURN = 2.6; // rad/s in god mode
 
@@ -759,11 +980,116 @@ addEventListener('mousemove', e => {
 // ---------- UI / screens ----------
 const $ = id => document.getElementById(id);
 const $deaths = $('deaths'), $time = $('time'), $msg = $('msg'), $banner = $('banner'), $lookhint = $('lookhint');
-const SCREENS = ['mainMenu', 'modeMenu', 'howMenu', 'settingsMenu', 'pauseMenu', 'end'];
+const SCREENS = ['mainMenu', 'modeMenu', 'achMenu', 'howMenu', 'settingsMenu', 'pauseMenu', 'end'];
 function show(id) {
+  if (id === 'achMenu') renderAchievements();
+  if (id === 'modeMenu') renderModeCards();
   for (const s of SCREENS) $(s).classList.toggle('hidden', s !== id);
   document.body.classList.toggle('inmenu', state === 'menu');
 }
+
+// icons (inline SVG, no emoji)
+const ICON = {
+  check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+  lock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="5" y="11" width="14" height="10" rx="2.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>',
+  trophy: '<svg class="ico" viewBox="0 0 24 24" fill="currentColor"><path d="M7 3h10v2h3a1 1 0 0 1 1 1v2a5 5 0 0 1-4.6 5A5 5 0 0 1 13 15.9V18h3a1 1 0 0 1 1 1v2H7v-2a1 1 0 0 1 1-1h3v-2.1A5 5 0 0 1 7.6 13 5 5 0 0 1 3 8V6a1 1 0 0 1 1-1h3V3Zm10 4v3.9A3 3 0 0 0 19 8V7h-2ZM5 7v1a3 3 0 0 0 2 2.9V7H5Z"/></svg>',
+};
+const beatenCount = () => Object.keys(MODES).filter(k => progress[k]).length;
+function updateAchCount() { $('achCount').textContent = `${beatenCount()}/${Object.keys(MODES).length}`; }
+function renderModeCards() {
+  document.querySelectorAll('.modeCard').forEach(b => b.classList.toggle('done', !!progress[b.dataset.mode]));
+}
+function renderAchievements() {
+  const keys = Object.keys(MODES), n = beatenCount();
+  $('achFill').style.width = (n / keys.length * 100) + '%';
+  $('achText').textContent = `${n} / ${keys.length} unlocked`;
+  $('achList').innerHTML = keys.map(k => {
+    const m = MODES[k], p = progress[k];
+    const meta = p
+      ? `<span class="state">Unlocked</span><br>${p.beatenAt ? new Date(p.beatenAt).toLocaleDateString() + '<br>' : ''}` +
+        `Best: ${p.bestDeaths} deaths · ${fmt(p.bestTime)}${p.clears > 1 ? `<br>Cleared ${p.clears} times` : ''}`
+      : `<span class="state">Locked</span><br>${m.tier}`;
+    return `<div class="ach m-${k}${p ? ' done' : ''}">
+      <div class="badge">${p ? ICON.check : ICON.lock}</div>
+      <div><h3>${m.achTitle}</h3><p>${m.achDesc}</p></div>
+      <div class="meta">${meta}</div></div>`;
+  }).join('');
+}
+$('btnResetProgress').addEventListener('click', () => {
+  if (!confirm('Reset all achievements and best runs? This cannot be undone.')) return;
+  progress = {}; saveProgress(); renderAchievements(); updateAchCount(); click();
+});
+
+let toastTimer = 0;
+function toast(title, text) {
+  const t = $('toast');
+  t.innerHTML = `${ICON.trophy}<div><b>${title}</b><span>${text}</span></div>`;
+  t.classList.remove('hidden');
+  t.style.animation = 'none'; void t.offsetHeight; t.style.animation = '';
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.add('hidden'), 5000);
+}
+// charge bar runs through the theme: blue cap -> yellow stripe -> red shirt
+const CHARGE_STOPS = [[60, 123, 224], [246, 201, 69], [226, 87, 76]];
+function chargeColor(p) {
+  const s = p * 2, i = Math.min(1, Math.floor(s)), u = s - i;
+  const a = CHARGE_STOPS[i], b = CHARGE_STOPS[i + 1];
+  return `rgb(${a.map((v, k) => Math.round(v + (b[k] - v) * u)).join(',')})`;
+}
+
+// ============================================================
+//  MENU BACKFLIPS - the UI does backflips too, because of course it does
+//  Medium chaos: random element every 3-5s, 20% chance on hover, flip on click,
+//  title letter wave ~12s, whole menu ~30s. Off via Settings or reduced-motion.
+// ============================================================
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
+const flipsOn = () => settings.menuFlips && !reduceMotion.matches;
+function whoop(big) { beep(big ? 220 : 320, big ? 0.45 : 0.25, 'sine', 0.035, big ? 700 : 600); }
+function flip(el, big = false, silent = false) {
+  if (!el || !flipsOn()) return;
+  if (el.classList.contains('flipping') || el.classList.contains('flipping-big')) return;
+  const cls = big ? 'flipping-big' : 'flipping';
+  el.classList.add(cls);
+  const done = () => el.classList.remove(cls);
+  el.addEventListener('animationend', done, { once: true });
+  setTimeout(done, big ? 1200 : 900); // fallback if the element got hidden mid-flip
+  if (!silent) whoop(big);
+}
+const visibleScreen = () => SCREENS.map($).find(s => !s.classList.contains('hidden'));
+const flippables = scr => [...scr.querySelectorAll('.btn, .modeCard, .ach, .panelHead, .sheet')];
+
+// split the title into letters so they can flip one after another
+for (const w of document.querySelectorAll('#title .word')) {
+  w.innerHTML = [...w.textContent].map(ch => `<span class="l">${ch}</span>`).join('');
+}
+function titleWave() {
+  if (!flipsOn() || $('mainMenu').classList.contains('hidden')) return;
+  [...document.querySelectorAll('#title .l')].forEach((l, i) => setTimeout(() => flip(l, false, true), i * 55));
+  whoop(false);
+}
+
+// random flips on a loose timer (only while a menu screen is open)
+function scheduleFlip(fn, min, max) {
+  const tick = () => { fn(); setTimeout(tick, min + Math.random() * (max - min)); };
+  setTimeout(tick, min + Math.random() * (max - min));
+}
+scheduleFlip(() => {
+  const scr = visibleScreen(); if (!scr) return;
+  const list = flippables(scr).filter(e => e.offsetParent);
+  flip(list[Math.floor(Math.random() * list.length)]);
+}, 3000, 5000);
+scheduleFlip(titleWave, 10000, 14000);
+scheduleFlip(() => {
+  const scr = visibleScreen(); if (!scr) return;
+  [...scr.children].forEach((c, i) => flip(c, true, i > 0)); // the whole menu goes over
+}, 26000, 34000);
+
+// hover betrayal (20%) and a flip on every click; the click action itself still happens instantly
+document.addEventListener('mouseover', e => {
+  const el = e.target.closest('.btn, .modeCard');
+  if (el && !el.contains(e.relatedTarget) && Math.random() < 0.2) flip(el);
+});
+document.addEventListener('click', e => { const el = e.target.closest('.btn, .modeCard'); if (el) flip(el, false, true); });
+
 function click() { beep(660, 0.05, 'square', 0.05); }
 document.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => {
   click();
@@ -775,15 +1101,8 @@ function goMainMenu() {
   document.exitPointerLock?.();
   levelIndex = 0; buildLevel(LEVELS[0]); respawn();
   $msg.textContent = ''; $banner.style.opacity = 0;
-  updateBest();
+  updateAchCount();
   show('mainMenu');
-}
-function updateBest() {
-  const line = k => {
-    const label = MODES[k].name;
-    return best[k] ? `${label}: 💀 ${best[k].deaths} deaths · ⏱ ${fmt(best[k].time)}` : `${label}: not beaten yet`;
-  };
-  $('bestText').innerHTML = '🏆 Best runs<br>' + Object.keys(MODES).map(line).join('<br>');
 }
 
 // settings screen
@@ -797,6 +1116,7 @@ const sliders = [
 function syncSettingsUI() {
   for (const [s, o, key, f] of sliders) { $(s).value = settings[key]; $(o).textContent = f(settings[key]); }
   $('sInvert').checked = settings.invertY;
+  $('sFlips').checked = settings.menuFlips;
 }
 for (const [s, o, key, f] of sliders) {
   $(s).addEventListener('input', () => {
@@ -806,6 +1126,10 @@ for (const [s, o, key, f] of sliders) {
 }
 $('sSfx').addEventListener('change', () => beep(520, 0.12, 'square', 0.07)); // preview
 $('sInvert').addEventListener('change', () => { settings.invertY = $('sInvert').checked; saveSettings(); });
+$('sFlips').addEventListener('change', () => {
+  settings.menuFlips = $('sFlips').checked; saveSettings();
+  if (settings.menuFlips) flip($('sFlips').closest('.setRow')); // show it off
+});
 function openSettings(from) { settingsFrom = from; syncSettingsUI(); click(); show('settingsMenu'); }
 function closeSettings() { click(); show(settingsFrom); }
 $('btnSettingsMain').addEventListener('click', () => openSettings('mainMenu'));
@@ -839,11 +1163,11 @@ document.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click'
 function startRun(key) {
   modeKey = key; M = MODES[key]; click();
   const badge = $('mode');
-  badge.className = 'panel ' + key;
+  badge.className = 'hud pill mode ' + key;
   badge.textContent = M.badge;
   $('tip').textContent = M.tip;
   $('lvlcount').textContent = LEVELS.length;
-  deaths = 0; runTime = 0; levelDeaths = [];
+  deaths = 0; runTime = 0; levelDeaths = []; levelsCleared = 0;
   loadLevel(0);
   show(null);
   lockMouse();
@@ -856,7 +1180,8 @@ function loadLevel(i) {
   levelDeaths[i] = 0; levelTime = 0;
   buildLevel(L);
   $('lvl').textContent = i + 1; $('lvlname').textContent = L.name;
-  $banner.innerHTML = `<div class="num">LEVEL ${i + 1}</div><div class="name">${L.name}</div>`;
+  $('pips').innerHTML = LEVELS.map((_, j) => `<i class="${j < i ? 'done' : j === i ? 'cur' : ''}"></i>`).join('');
+  $banner.innerHTML = `<div class="num">Level ${i + 1}</div><div class="name">${L.name}</div>`;
   $banner.style.opacity = 1; bannerT = 2.2;
   state = 'playing';
   respawn();
@@ -864,7 +1189,7 @@ function loadLevel(i) {
 }
 
 // ---------- Game state ----------
-let deaths = 0, runTime = 0, levelTime = 0, levelDeaths = [], shake = 0, time = 0, doneT = 0;
+let deaths = 0, runTime = 0, levelTime = 0, levelDeaths = [], shake = 0, time = 0, doneT = 0, levelsCleared = 0;
 const camTarget = new THREE.Vector3();
 
 function respawn() {
@@ -882,7 +1207,7 @@ function die(cause) {
   billy.dead = true; billy.deadT = T.deathTime; billy.spin = (Math.random() < 0.5 ? -1 : 1) * (9 + Math.random() * 6);
   billy.vx = (Math.random() - 0.5) * 6; billy.vz = (Math.random() - 0.5) * 6; billy.vy = 9;
   deaths++; levelDeaths[levelIndex]++; shake = 0.5;
-  $msg.innerHTML = `${pickInsult(cause)}<span class="sub">💀 ${deaths}</span>`;
+  $msg.innerHTML = `${pickInsult(cause)}<br><span class="sub">Death #${deaths}</span>`;
   sadTrombone();
   burst(24, billy.x, billy.y, billy.z, 9, 0xe2574c);
   burst(14, billy.x, billy.y, billy.z, 7, 0xf2c29b);
@@ -894,11 +1219,12 @@ function reachFinish() {
   burst(40, billy.x, billy.y + 1, billy.z, 10, last ? 0xf6c945 : 0x3ddc84);
   billy.vx = billy.vz = 0; billy.flipping = false; billy.angle = 0;
   billy.charging = false; humStop();
+  levelsCleared++;
   if (last) { finishRun(); return; }
   state = 'levelDone'; doneT = 2.5;
   const n = levelDeaths[levelIndex];
-  const quip = n === 0 ? 'Zero deaths?! Suspicious.' : n < 5 ? 'Not bad. Not good either.' : n < 20 ? 'Finally.' : 'That took forever.';
-  $msg.innerHTML = `LEVEL ${levelIndex + 1} COMPLETE!<span class="sub">${quip} · ${n} deaths · Enter to continue</span>`;
+  const quip = n === 0 ? 'Zero deaths? Suspicious.' : n < 5 ? 'Not bad. Not good either.' : n < 20 ? 'Finally.' : 'That took forever.';
+  $msg.innerHTML = `Level ${levelIndex + 1} complete!<br><span class="sub ok">${quip} · ${n} deaths · Enter to continue</span>`;
   [523, 659, 784].forEach((f, i) => setTimeout(() => beep(f, 0.2, 'triangle', 0.1), i * 110));
 }
 
@@ -907,13 +1233,33 @@ function finishRun() {
   $msg.textContent = '';
   [523, 659, 784, 1047, 1319].forEach((f, i) => setTimeout(() => beep(f, 0.3, 'triangle', 0.1), i * 130));
   document.exitPointerLock?.();
-  const b = best[modeKey];
-  const isBest = !b || deaths < b.deaths || (deaths === b.deaths && runTime < b.time);
-  if (isBest) { best[modeKey] = { deaths, time: runTime }; try { localStorage.setItem('bb_best2', JSON.stringify(best)); } catch (e) {} }
-  $('endMode').innerHTML = M.end + (isBest ? '<br>⭐ New personal best!' : '');
+  // Achievement: only counts if every level of this run was actually cleared in this mode
+  const legit = levelsCleared === LEVELS.length;
+  const prev = progress[modeKey];
+  const firstClear = legit && !prev;
+  const isBest = legit && (!prev || deaths < prev.bestDeaths || (deaths === prev.bestDeaths && runTime < prev.bestTime));
+  if (legit) {
+    progress[modeKey] = {
+      beatenAt: prev?.beatenAt || Date.now(),
+      bestDeaths: isBest ? deaths : prev.bestDeaths,
+      bestTime: isBest ? runTime : prev.bestTime,
+      clears: (prev?.clears || 0) + 1,
+    };
+    saveProgress();
+  }
+  if (firstClear) {
+    setTimeout(() => {
+      toast('Achievement unlocked', M.achTitle);
+      [784, 988, 1175, 1568].forEach((f, i) => setTimeout(() => beep(f, 0.18, 'square', 0.06), i * 90));
+    }, 700);
+  }
+  $('endMode').textContent = M.end + (isBest && prev ? ' New personal best!' : '');
+  const u = $('endUnlock');
+  u.classList.toggle('hidden', !firstClear);
+  if (firstClear) u.innerHTML = `${ICON.trophy}<span>Achievement unlocked: ${M.achTitle}</span>`;
   $('endTable').innerHTML =
-    LEVELS.map((L, i) => `<tr><td>Level ${i + 1}: ${L.name}</td><td>💀 ${levelDeaths[i]}</td></tr>`).join('') +
-    `<tr><td>Total deaths</td><td>💀 ${deaths}</td></tr><tr><td>Total time</td><td>⏱ ${fmt(runTime)}</td></tr>`;
+    LEVELS.map((L, i) => `<tr><td>Level ${i + 1} · ${L.name}</td><td>${levelDeaths[i]} deaths</td></tr>`).join('') +
+    `<tr class="total"><td>Total deaths</td><td>${deaths}</td></tr><tr class="total"><td>Total time</td><td>${fmt(runTime)}</td></tr>`;
   setTimeout(() => { if (state === 'finished') show('end'); }, 1200);
 }
 
@@ -1108,7 +1454,7 @@ function updateVisuals() {
   if (billy.charging) {
     const p = billy.power;
     $chargeFill.style.width = (p * 100) + '%';
-    $chargeFill.style.background = `hsl(${120 - p * 120}, 85%, 50%)`;
+    $chargeFill.style.background = chargeColor(p);
     $chargePct.textContent = Math.round(p * 100) + '%';
   }
 
@@ -1137,7 +1483,8 @@ function updateVisuals() {
   $lookhint.classList.toggle('hidden', state !== 'playing' || isLocked());
   camSide += ((sl ? 1 : 0) - camSide) * 0.15;
   const d = (inMenu ? 8 : T.camDist) + (T.shiftLockDist - T.camDist) * camSide;
-  const off = T.shoulderOffset * camSide;
+  // on the main menu, push Billy to the right so the menu column on the left doesn't cover him
+  const off = inMenu && innerWidth > 800 ? -2.6 : T.shoulderOffset * camSide;
   const ox = Math.cos(camYaw) * off, oz = -Math.sin(camYaw) * off;
   camera.position.set(
     camTarget.x + ox + Math.sin(camYaw) * Math.cos(camPitch) * d,
