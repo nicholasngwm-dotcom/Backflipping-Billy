@@ -1,0 +1,1172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Backflipping Billy</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #87c8f0; font-family: system-ui, sans-serif; }
+  canvas { display: block; }
+  .panel { position: fixed; color: #fff; background: rgba(20,24,40,.6); border-radius: 10px; padding: 10px 14px; pointer-events: none; }
+  #hud { top: 14px; left: 14px; font-weight: 700; font-size: 17px; line-height: 1.55; }
+  #hud small { font-weight: 400; font-size: 15px; }
+  #goal { top: 14px; left: 50%; transform: translateX(-50%); font-size: 18px; font-weight: 800; color: #f6c945; white-space: nowrap; }
+  #help { top: 14px; right: 14px; font-size: 13px; line-height: 1.6; text-align: right; max-width: 330px; }
+  #mode { bottom: 16px; right: 14px; font-size: 14px; font-weight: 700; }
+  #mode.baby { background: rgba(236,120,180,.85); }
+  #mode.pro { background: rgba(30,30,30,.85); color: #f6c945; }
+  #mode.chad { background: rgba(110,60,190,.9); }
+  #mode.god { background: rgba(250,250,245,.95); color: #2c5fb8; }
+  body.inmenu #hud, body.inmenu #goal, body.inmenu #help, body.inmenu #mode { display: none; }
+  #msg { position: fixed; top: 28%; left: 0; right: 0; padding: 0 16px; text-align: center; color: #fff; font-size: clamp(26px, 4.5vw, 44px);
+         font-weight: 800; text-shadow: 3px 3px 0 rgba(0,0,0,.4); pointer-events: none; }
+  #msg .sub { display: block; font-size: 20px; font-weight: 700; opacity: .9; margin-top: 6px; }
+  #banner { position: fixed; top: 18%; width: 100%; text-align: center; color: #fff; pointer-events: none;
+            text-shadow: 3px 3px 0 rgba(0,0,0,.35); transition: opacity .6s; }
+  #banner .num { font-size: 22px; font-weight: 700; color: #f6c945; letter-spacing: 3px; }
+  #banner .name { font-size: 56px; font-weight: 900; }
+  #crosshair { position: fixed; left: 50%; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px;
+               border: 3px solid #fff; border-radius: 50%; box-shadow: 0 0 0 2px rgba(0,0,0,.45); pointer-events: none; }
+  #crosshair::after { content: ''; position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px 0 0 -2px;
+                      background: #fff; border-radius: 50%; }
+  #lookhint { bottom: 16px; left: 50%; transform: translateX(-50%); font-size: 14px; }
+  #charge { position: fixed; left: 50%; bottom: 70px; transform: translateX(-50%); width: min(360px, 80vw);
+            pointer-events: none; text-align: center; color: #fff; font-weight: 800; font-size: 14px;
+            text-shadow: 2px 2px 0 rgba(0,0,0,.4); }
+  #chargeBar { margin-top: 6px; height: 18px; border-radius: 9px; background: rgba(20,24,40,.7);
+               box-shadow: 0 0 0 3px rgba(255,255,255,.85); overflow: hidden; }
+  #chargeFill { height: 100%; width: 0; border-radius: 9px; }
+
+  /* ----- menus ----- */
+  .screen { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+            background: rgba(20,24,40,.78); color: #fff; text-align: center; padding: 16px; box-sizing: border-box; overflow-y: auto; }
+  .screen.light { background: linear-gradient(180deg, rgba(20,24,40,.15), rgba(20,24,40,.65)); }
+  .screen h1 { font-size: clamp(36px, 8vw, 76px); margin: 0; color: #f6c945; text-shadow: 4px 4px 0 #b4472c, 8px 8px 0 rgba(0,0,0,.25);
+               transform: rotate(-3deg); letter-spacing: 1px; }
+  .screen h2 { font-size: clamp(26px, 5vw, 40px); margin: 0 0 16px; color: #f6c945; }
+  .screen p { margin: 6px 0; font-size: 17px; }
+  .tagline { font-size: 18px; margin: 14px 0 26px !important; text-shadow: 2px 2px 0 rgba(0,0,0,.4); }
+  .stack { display: flex; flex-direction: column; gap: 12px; width: min(320px, 90vw); }
+  button { font: inherit; cursor: pointer; border: 0; border-radius: 14px; padding: 14px 22px; color: #fff;
+           transition: transform .1s, filter .1s; }
+  button:hover { transform: scale(1.05); filter: brightness(1.1); }
+  button:active { transform: scale(.97); }
+  .btn { background: #3c7be0; font-size: 20px; font-weight: 800; box-shadow: 0 5px 0 rgba(0,0,0,.3); }
+  .btn.play { background: #e2574c; font-size: 26px; }
+  .btn.grey { background: #59607a; }
+  .modes { display: grid; grid-template-columns: repeat(2, minmax(0, 300px)); gap: 16px; margin-top: 10px; justify-content: center; }
+  @media (max-width: 640px) { .modes { grid-template-columns: minmax(0, 340px); } }
+  .modes button { display: flex; flex-direction: column; justify-content: center; min-height: 120px; }
+  .modes .tier { font-size: 12px; font-weight: 800; letter-spacing: 2px; opacity: .75; }
+  .modes b { display: block; font-size: 20px; margin: 4px 0; }
+  .modes span { font-size: 14px; opacity: .95; line-height: 1.4; }
+  .m-baby { background: #ec78b4; }
+  .m-pro { background: #1e1e1e; color: #f6c945; box-shadow: 0 0 0 3px #f6c945 inset; }
+  .m-chad { background: #6e3cbe; box-shadow: 0 0 0 3px #c9a8ff inset; }
+  .m-god { background: #fafaf5; color: #2c5fb8; box-shadow: 0 0 0 4px #2c5fb8 inset, 0 0 24px rgba(255,255,255,.6); }
+  .best { margin-top: 22px; font-size: 14px; opacity: .85; line-height: 1.6; }
+  .card { background: rgba(255,255,255,.08); border-radius: 14px; padding: 18px 22px; width: min(460px, 92vw); box-sizing: border-box; text-align: left; }
+  .card ul { margin: 0; padding-left: 20px; line-height: 1.75; font-size: 16px; }
+  .row { display: grid; grid-template-columns: 1fr 1.4fr 52px; align-items: center; gap: 12px; margin: 10px 0; font-size: 16px; }
+  .row input[type=range] { width: 100%; accent-color: #f6c945; }
+  .row output { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .row.check { grid-template-columns: 1fr auto; }
+  .row.check input { width: 20px; height: 20px; accent-color: #f6c945; }
+  .gap { height: 16px; }
+  #end table { margin: 14px auto; border-collapse: collapse; font-size: 17px; }
+  #end td { padding: 4px 14px; border-bottom: 1px solid rgba(255,255,255,.15); }
+  #end td:last-child { text-align: right; font-weight: 700; }
+  .hidden { display: none !important; }
+</style>
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
+</script>
+</head>
+<body class="inmenu">
+<div id="goal" class="panel">🏆 Reach the end for a grand prize!</div>
+<div id="hud" class="panel">Level <span id="lvl">1</span>/<span id="lvlcount">3</span> · <span id="lvlname"></span><br>
+  💀 Deaths: <span id="deaths">0</span> <small>⏱ <span id="time">0:00.0</span></small></div>
+<div id="help" class="panel">WASD move · Mouse look · R restart · Esc pause · Shift free mouse<br>
+  <b>Hold Space</b> to charge, <b>release</b> to backflip. Power goes up AND down!<br>
+  <b>Billy flips AWAY from where he faces.</b><br><span id="tip"></span></div>
+<div id="mode" class="panel"></div>
+<div id="crosshair" class="hidden"></div>
+<div id="banner"></div>
+<div id="charge" class="hidden"><div>BACKFLIP POWER <span id="chargePct">0%</span></div>
+  <div id="chargeBar"><div id="chargeFill"></div></div></div>
+<div id="msg"></div>
+<div id="lookhint" class="panel hidden">🖱 Mouse free · press Shift or click to recapture</div>
+
+<!-- MAIN MENU -->
+<div id="mainMenu" class="screen light">
+  <h1>Backflipping Billy</h1>
+  <p class="tagline">A game about a kid who can only backflip. You will hate it.</p>
+  <div class="stack">
+    <button class="btn play" data-go="modeMenu">▶ Play</button>
+    <button class="btn" data-go="howMenu">❓ How to Play</button>
+    <button class="btn grey" id="btnSettingsMain">⚙ Settings</button>
+  </div>
+  <div class="best" id="bestText"></div>
+</div>
+
+<!-- MODE SELECT -->
+<div id="modeMenu" class="screen hidden">
+  <h2>Choose your skill level</h2>
+  <p>This choice is locked for the whole run. Choose wisely.</p>
+  <div class="gap"></div>
+  <div class="modes">
+    <button class="m-baby" data-mode="baby"><span class="tier">TIER 1</span><b>👶 Baby Gamer</b>
+      <span>No shift lock. For baby gamers.</span></button>
+    <button class="m-pro" data-mode="pro"><span class="tier">TIER 2</span><b>😎 Pro Elite Gamer</b>
+      <span>Shift lock. Billy faces where you look.</span></button>
+    <button class="m-chad" data-mode="chad"><span class="tier">TIER 3</span><b>🗿 Chad Pro Elite Gamer</b>
+      <span>No shift lock + inverted controls.</span></button>
+    <button class="m-god" data-mode="god"><span class="tier">TIER ∞</span><b>🥛 Chad Elite God Level Pro Maxxing Gamer</b>
+      <span>No mouse. Camera stuck behind Billy. He drank the milk under the sink, so he's confused: controls inverted.</span></button>
+  </div>
+  <div class="gap"></div>
+  <button class="btn grey" data-go="mainMenu">← Back</button>
+</div>
+
+<!-- HOW TO PLAY -->
+<div id="howMenu" class="screen hidden">
+  <h2>How to Play</h2>
+  <div class="card"><ul>
+    <li><b>WASD</b> to walk, <b>mouse</b> to look around.</li>
+    <li>Billy <b>cannot jump</b>. He can only <b>backflip</b>.</li>
+    <li><b>Hold Space</b> to charge, <b>release</b> to flip. The power bar goes up <i>and back down</i>, forever.</li>
+    <li>Billy flips <b>away</b> from where he faces. To go forward, face the camera (press <b>S</b>), then flip.</li>
+    <li>Land upright, or Billy lands on his head.</li>
+    <li>Die and you restart the level. Beat a level and it's saved.</li>
+    <li><b>R</b> restarts the level, <b>Esc</b> pauses, <b>Shift</b> frees/recaptures the mouse.</li>
+    <li><b>Modes:</b> 👶 Baby (normal) · 😎 Pro Elite (shift lock) · 🗿 Chad (inverted controls) ·
+      🥛 God Level Maxxing (no mouse, camera stuck behind Billy, inverted tank controls).</li>
+  </ul></div>
+  <div class="gap"></div>
+  <button class="btn grey" data-go="mainMenu">← Back</button>
+</div>
+
+<!-- SETTINGS -->
+<div id="settingsMenu" class="screen hidden">
+  <h2>⚙ Settings</h2>
+  <div class="card">
+    <div class="row"><label for="sMaster">🔊 Master volume</label><input id="sMaster" type="range" min="0" max="100"><output id="oMaster"></output></div>
+    <div class="row"><label for="sMusic">🎵 Music volume</label><input id="sMusic" type="range" min="0" max="100"><output id="oMusic"></output></div>
+    <div class="row"><label for="sSfx">💥 Sound effects</label><input id="sSfx" type="range" min="0" max="100"><output id="oSfx"></output></div>
+    <div class="gap"></div>
+    <div class="row"><label for="sSens">🖱 Mouse sensitivity</label><input id="sSens" type="range" min="0.2" max="3" step="0.05"><output id="oSens"></output></div>
+    <div class="row check"><label for="sInvert">Invert mouse Y</label><input id="sInvert" type="checkbox"></div>
+  </div>
+  <div class="gap"></div>
+  <div class="stack">
+    <button class="btn grey" id="btnSettingsReset">Reset to defaults</button>
+    <button class="btn" id="btnSettingsBack">← Back</button>
+  </div>
+</div>
+
+<!-- PAUSE -->
+<div id="pauseMenu" class="screen hidden">
+  <h2>Paused</h2>
+  <p>Taking a break from failing?</p>
+  <div class="gap"></div>
+  <div class="stack">
+    <button class="btn play" id="btnResume">▶ Resume</button>
+    <button class="btn" id="btnRestartLvl">↺ Restart level</button>
+    <button class="btn grey" id="btnSettingsPause">⚙ Settings</button>
+    <button class="btn grey" id="btnQuit">🏠 Main menu</button>
+  </div>
+</div>
+
+<!-- END -->
+<div id="end" class="screen hidden">
+  <h1>🏆 GRAND PRIZE 🏆</h1>
+  <div class="gap"></div>
+  <p id="endMode" style="font-size:20px"></p>
+  <table id="endTable"></table>
+  <p>Your prize: a trophy made of pure pixels. Worth every death.</p>
+  <div class="gap"></div>
+  <div class="stack">
+    <button class="btn play" data-go="modeMenu">Play again</button>
+    <button class="btn grey" data-go="mainMenu">🏠 Main menu</button>
+  </div>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+
+// ============================================================
+//  BACKFLIPPING BILLY - 3D third-person rage game
+// ============================================================
+
+// ---------- Tuning ----------
+const T = {
+  gravity: 30,       // m/s^2
+  walkSpeed: 4.5,    // m/s
+  turnRate: 16,      // how fast Billy turns to face movement
+  // Charged backflip: hold Space, power ping-pongs min -> max -> min ..., release to flip.
+  flipUpMin: 9.5,   flipUpMax: 12.5,   // upward launch speed
+  flipBackMin: 2.5, flipBackMax: 10,   // backward launch speed (always opposite of facing!)
+  chargeTime: 0.8,   // seconds to go from min to max (then back down)
+  flipSpin: 0.89,    // full 360 takes this fraction of the flat-ground airtime
+  safeLandDeg: 60,   // must be within this many degrees of upright to land
+  deathTime: 1.5,    // seconds before respawn (long enough to enjoy the trombone)
+  camDist: 7, mouseSens: 0.0025,
+  shoulderOffset: 1.1, shiftLockDist: 6,
+};
+const HX = 0.3, HY = 0.86; // player hitbox half extents (x/z, y)
+// Handy numbers for level design (flat-ground flip distance by charge):
+//   0% ~1.6m · 25% ~3m · 50% ~4.6m · 75% ~6.4m · 100% ~8.3m (peaks ~2.6m up)
+// Landing up to ~1.5m higher is safe at most charges; higher = lands on head.
+
+// ---------- Levels ----------
+// platform: center x/z, size w (x) d (z), top y, optional h (thickness)
+// move: { axis: 'x'|'y'|'z', range, speed, phase }
+// spike strip: center x/z, size w/d, top (y of the floor it sits on)
+const LEVELS = [
+  {
+    name: 'Normal Jumping',
+    spawn: { x: 0, z: 2.5, top: 0 },
+    finish: { x: 3.5, z: -48, top: 2.2 },
+    platforms: [
+      { x: 0,   z: 0,   w: 8, d: 10, top: 0 },
+      { x: 0,   z: -11, w: 4, d: 4,  top: 0 },     // 4m gap
+      { x: 0,   z: -17, w: 3, d: 3,  top: 1 },     // tiny hop: don't overcharge
+      { x: 0,   z: -25, w: 3, d: 4,  top: 1 },     // 4.5m gap
+      { x: 3.5, z: -31, w: 3, d: 3,  top: 1.6 },   // diagonal flip
+      { x: 3.5, z: -38, w: 2, d: 2,  top: 1.6 },   // small target
+      { x: 3.5, z: -47, w: 6, d: 7,  top: 2.2 },   // 4.5m gap, uphill
+    ],
+    spikes: [],
+  },
+  {
+    name: 'Spikes',
+    spawn: { x: 0, z: 2.5, top: 0 },
+    finish: { x: 0, z: -47.5, top: 1.2 },
+    platforms: [
+      { x: 0, z: -10, w: 6, d: 28, top: 0 },
+      { x: 0, z: -33, w: 5, d: 12, top: 0.6 },
+      { x: 0, z: -46, w: 5, d: 6,  top: 1.2 },
+    ],
+    spikes: [
+      { x: 0, z: -6,    w: 6, d: 1.2, top: 0 },
+      { x: 0, z: -12,   w: 6, d: 3,   top: 0 },
+      { x: 0, z: -18.5, w: 6, d: 1.2, top: 0 },
+      { x: 0, z: -33,   w: 5, d: 5,   top: 0.6 },  // the big one: near-full charge
+      { x: -1.6, z: -45, w: 1.8, d: 1.2, top: 1.2 },
+      { x: 1.6,  z: -45, w: 1.8, d: 1.2, top: 1.2 },
+    ],
+  },
+  {
+    name: 'Moving Platforms',
+    spawn: { x: 0, z: 2.5, top: 0 },
+    finish: { x: 0, z: -43.5, top: 1.5 },
+    platforms: [
+      { x: 0, z: 0,   w: 6,   d: 8,   top: 0 },
+      { x: 0, z: -10, w: 2.5, d: 2.5, top: 0,   h: 0.4, move: { axis: 'x', range: 3.5, speed: 1.1, phase: 0 } },
+      { x: 0, z: -17, w: 2.5, d: 2.5, top: 0.5 },
+      { x: 0, z: -25, w: 2.5, d: 2.5, top: 0.5, h: 0.4, move: { axis: 'z', range: 2,   speed: 1.3, phase: 1 } },
+      { x: 0, z: -33, w: 2.5, d: 2.5, top: 0.8, h: 0.4, move: { axis: 'y', range: 1.2, speed: 1.2, phase: 2 } },
+      { x: 0, z: -42, w: 6,   d: 6,   top: 1.5 },
+    ],
+    spikes: [],
+  },
+];
+
+// ---------- Death insults ----------
+const INSULTS = {
+  generic: [
+    "Billy's grandma flips better than that.", 'Have you tried being good?', 'That was embarrassing. For both of us.',
+    'Skill issue. Massive skill issue.', 'Billy is requesting a new player.', 'Were your eyes closed?',
+    'Bold strategy. Did not work.', 'My toaster could make that jump.', 'Achievement unlocked: Disappointment.',
+    'Maybe try a different hobby?', 'You call that a backflip?', 'The ground says hi. Again.',
+    "Billy's neck has left the chat.", 'Did you mean to do that? Be honest.', 'Uninstall? Just kidding. ...Unless?',
+    'Wow. Just wow.', 'Your keyboard deserves better.', 'Billy believed in you. Past tense.',
+    'Even the NPCs are laughing.', 'That one was on you. They all are.',
+  ],
+  head: [
+    'Head first. Classic you.', 'You were supposed to land on your FEET.', 'Rotation: incomplete. Like your skills.',
+    'Billy now has exactly zero brain cells.', 'Charge less. Or more. Just... better.', 'Ah yes, the famous neck landing.',
+  ],
+  spikes: [
+    'Spikes are pointy. Who knew? Not you.', 'You saw the spikes. You chose the spikes.', 'Billy is now a pincushion.',
+    'The spikes thank you for your donation.', "Hint: don't touch the pointy bits.",
+  ],
+  void: [
+    'Billy fell. Your standards fell further.', 'The void accepts you. Nobody else does.', 'Gap: 1. You: 0.',
+    'Bye Billy. Billy deserved better.', 'Did you think Billy could fly?',
+  ],
+  baby: [
+    'Baby gamer moment.', 'Want a pacifier with that?', 'Nap time, baby gamer?',
+    'This is the EASY mode. Just so you know.', 'Goo goo ga ga, skill issue.',
+  ],
+  pro: [
+    "'Pro elite gamer.' Sure, buddy.", "Shift lock can't save you from yourself.", 'Even with shift lock? Wow.',
+    'Pro at dying, maybe.', 'The baby gamers are doing better than you.',
+  ],
+  chad: [
+    'Chad? More like Chump.', 'W is S. Remember? No? Clearly.', 'Your brain is upside down. Billy is too.',
+    'Chads don\'t die this much.', 'Inverted controls, inverted skill.',
+  ],
+  god: [
+    'Billy is confused from the milk. What\'s your excuse?', 'God level? God awful.', 'Should NOT have drunk that milk.',
+    'Maxxing deaths, maybe.', 'The milk was expired. So is your talent.', 'Billy can\'t see. Neither can you, apparently.',
+  ],
+};
+function milestoneInsult(n) {
+  return {
+    10: "10 deaths. Billy's mom wants a word.",
+    25: modeKey === 'baby' ? '25 deaths. In BABY mode.' : `25 deaths. Baby mode is right there...`,
+    50: '50 deaths. Go touch some grass.',
+    75: '75 deaths. Billy is writing a complaint.',
+    100: '100 deaths. Billy has filed for a new player.',
+  }[n];
+}
+let lastInsult = '';
+function pickInsult(cause) {
+  const ms = milestoneInsult(deaths); if (ms) return ms;
+  const r = Math.random();
+  const pool = r < 0.4 && INSULTS[cause] ? INSULTS[cause]
+    : r < 0.6 ? INSULTS[modeKey] : INSULTS.generic;
+  let s;
+  do { s = pool[Math.floor(Math.random() * pool.length)]; } while (s === lastInsult && pool.length > 1);
+  return (lastInsult = s);
+}
+
+// ---------- Settings (saved in browser) ----------
+const DEFAULTS = { master: 80, music: 50, sfx: 80, sens: 1, invertY: false };
+const settings = { ...DEFAULTS };
+try { Object.assign(settings, JSON.parse(localStorage.getItem('bb_settings') || '{}')); } catch (e) {}
+function saveSettings() { try { localStorage.setItem('bb_settings', JSON.stringify(settings)); } catch (e) {} }
+let best = {};
+try { best = JSON.parse(localStorage.getItem('bb_best2') || '{}'); } catch (e) {}
+
+// ---------- Game modes ----------
+//  shiftLock: Billy faces the camera direction (Roblox shift lock)
+//  invert:    WASD inverted (W<->S, A<->D)
+//  tank:      no mouse turning; A/D rotate Billy, W/S walk; camera locked behind Billy
+const MODES = {
+  baby: { name: '👶 Baby Gamer', badge: '👶 Baby Gamer · No Shift Lock', shiftLock: false, invert: false, tank: false,
+          tip: 'Tip: press S to face the camera, then flip.',
+          end: '👶 Beaten in Baby mode. Cute. Now try a real mode.' },
+  pro:  { name: '😎 Pro Elite Gamer', badge: '😎 Pro Elite Gamer · Shift Lock', shiftLock: true, invert: false, tank: false,
+          tip: 'Shift lock: Billy faces where you look, so flips go toward the camera.',
+          end: '😎 Beaten as a Pro Elite Gamer. Respectable.' },
+  chad: { name: '🗿 Chad Pro Elite', badge: '🗿 Chad Pro Elite Gamer · Inverted', shiftLock: false, invert: true, tank: false,
+          tip: 'Controls inverted: W is S, A is D. Good luck.',
+          end: '🗿 Beaten as a Chad Pro Elite Gamer. Your brain is permanently upside down.' },
+  god:  { name: '🥛 God Level Maxxing', badge: '🥛 Chad Elite God Level Pro Maxxing Gamer · Milk-confused', shiftLock: false, invert: true, tank: true,
+          tip: 'No mouse. A/D turn Billy, W/S walk, all inverted (milk). Camera is stuck behind him.',
+          end: '🥛 Beaten as a CHAD ELITE GOD LEVEL PRO MAXXING GAMER. Billy has finally digested the milk. Absolute legend.' },
+};
+const TANK_TURN = 2.6; // rad/s in god mode
+
+// ---------- Renderer / scene ----------
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.prepend(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x87c8f0);
+scene.fog = new THREE.Fog(0x87c8f0, 45, 130);
+const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.1, 400);
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+scene.add(new THREE.HemisphereLight(0xe8f6ff, 0x5a7a4a, 1.3));
+const sun = new THREE.DirectionalLight(0xffffff, 2.4);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -16, right: 16, top: 16, bottom: -16, near: 1, far: 60 });
+sun.shadow.bias = -0.0005;
+scene.add(sun, sun.target);
+
+const ocean = new THREE.Mesh(new THREE.PlaneGeometry(800, 800),
+  new THREE.MeshStandardMaterial({ color: 0x2f7fc4, roughness: 0.4 }));
+ocean.rotation.x = -Math.PI / 2; ocean.position.y = -12;
+scene.add(ocean);
+
+const cloudMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1 });
+for (let i = 0; i < 28; i++) {
+  const g = new THREE.Group();
+  const n = 3 + Math.floor(Math.random() * 3);
+  for (let j = 0; j < n; j++) {
+    const s = new THREE.Mesh(new THREE.SphereGeometry(1.5 + Math.random() * 1.5, 12, 10), cloudMat);
+    s.position.set(j * 2 - n, Math.random(), Math.random() * 1.5);
+    g.add(s);
+  }
+  const side = Math.random() < 0.5 ? -1 : 1;
+  g.position.set(side * (14 + Math.random() * 35), 4 + Math.random() * 22, 20 - Math.random() * 120);
+  scene.add(g);
+}
+
+// ---------- Finish objects (portal for normal levels, trophy for the last) ----------
+const gold = new THREE.MeshStandardMaterial({ color: 0xf6c945, metalness: 0.85, roughness: 0.25 });
+const trophy = new THREE.Group();
+{
+  const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.15, 0.55, 20), gold); cup.position.y = 0.55;
+  const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.3), gold); stem.position.y = 0.15;
+  const base = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.1, 0.5), gold);
+  const hL = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.04, 8, 16), gold); hL.position.set(-0.42, 0.6, 0);
+  const hR = hL.clone(); hR.position.x = 0.42;
+  trophy.add(cup, stem, base, hL, hR);
+  trophy.traverse(m => m.castShadow = true);
+  trophy.scale.setScalar(1.4);
+}
+const portal = new THREE.Group();
+{
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(1, 0.12, 12, 40),
+    new THREE.MeshStandardMaterial({ color: 0x3ddc84, emissive: 0x3ddc84, emissiveIntensity: 1.2 }));
+  const inner = new THREE.Mesh(new THREE.CircleGeometry(0.95, 40),
+    new THREE.MeshBasicMaterial({ color: 0x9dffc9, transparent: true, opacity: 0.35, side: THREE.DoubleSide }));
+  ring.castShadow = true;
+  portal.add(ring, inner);
+}
+scene.add(trophy, portal);
+
+// ---------- Billy ----------
+const mats = {
+  skin: new THREE.MeshStandardMaterial({ color: 0xf2c29b, roughness: 0.7 }),
+  shirt: new THREE.MeshStandardMaterial({ color: 0xe2574c }),
+  stripe: new THREE.MeshStandardMaterial({ color: 0xf6c945 }),
+  shorts: new THREE.MeshStandardMaterial({ color: 0x2f3b63 }),
+  shoe: new THREE.MeshStandardMaterial({ color: 0xffffff }),
+  cap: new THREE.MeshStandardMaterial({ color: 0x3c7be0 }),
+  dark: new THREE.MeshStandardMaterial({ color: 0x222222 }),
+};
+function part(geo, mat, x, y, z, parent) {
+  const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = true; parent.add(m); return m;
+}
+const billyRoot = new THREE.Group();      // at hitbox center
+const yawG = new THREE.Group();           // facing
+const flipG = new THREE.Group();          // backflip rotation (local X)
+billyRoot.add(yawG); yawG.add(flipG); scene.add(billyRoot);
+// model faces local -Z
+function limb(x, y, parent) { const g = new THREE.Group(); g.position.set(x, y, 0); parent.add(g); return g; }
+const legL = limb(-0.12, -0.25, flipG), legR = limb(0.12, -0.25, flipG);
+for (const L of [legL, legR]) {
+  part(new THREE.BoxGeometry(0.18, 0.5, 0.2), mats.shorts, 0, -0.25, 0, L);
+  part(new THREE.BoxGeometry(0.22, 0.12, 0.32), mats.shoe, 0, -0.55, -0.05, L);
+}
+part(new THREE.BoxGeometry(0.46, 0.22, 0.27), mats.shorts, 0, -0.2, 0, flipG);
+part(new THREE.BoxGeometry(0.46, 0.5, 0.28), mats.shirt, 0, 0.05, 0, flipG);
+part(new THREE.BoxGeometry(0.47, 0.1, 0.29), mats.stripe, 0, 0.05, 0, flipG);
+const armL = limb(-0.31, 0.25, flipG), armR = limb(0.31, 0.25, flipG);
+for (const A of [armL, armR]) {
+  part(new THREE.BoxGeometry(0.15, 0.16, 0.17), mats.shirt, 0, -0.06, 0, A);
+  part(new THREE.BoxGeometry(0.13, 0.36, 0.15), mats.skin, 0, -0.3, 0, A);
+}
+part(new THREE.SphereGeometry(0.27, 20, 16), mats.skin, 0, 0.56, 0, flipG);
+part(new THREE.SphereGeometry(0.035, 8, 8), mats.dark, -0.1, 0.6, -0.245, flipG);
+part(new THREE.SphereGeometry(0.035, 8, 8), mats.dark, 0.1, 0.6, -0.245, flipG);
+const mouth = part(new THREE.BoxGeometry(0.12, 0.03, 0.02), mats.dark, 0, 0.47, -0.255, flipG);
+part(new THREE.SphereGeometry(0.285, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2), mats.cap, 0, 0.6, 0, flipG);
+part(new THREE.BoxGeometry(0.34, 0.04, 0.26), mats.cap, 0, 0.62, -0.3, flipG);
+
+const billy = {
+  x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, yaw: 0, angle: 0,
+  grounded: false, ground: null, flipping: false, flipT: 0, walkT: 0,
+  dead: false, deadT: 0, spin: 0,
+  charging: false, chargeT: 0, power: 0, flipTime: 0.65,
+};
+// ping-pong 0 -> 1 -> 0 -> 1 ...
+const chargePower = t => { const u = (t / T.chargeTime) % 2; return u <= 1 ? u : 2 - u; };
+
+// ---------- Particles ----------
+const pGeo = new THREE.BoxGeometry(0.1, 0.1, 0.1);
+const pool = [];
+for (let i = 0; i < 80; i++) {
+  const m = new THREE.Mesh(pGeo, new THREE.MeshBasicMaterial({ color: 0xffffff }));
+  m.visible = false; scene.add(m);
+  pool.push({ m, vx: 0, vy: 0, vz: 0, life: 0 });
+}
+function burst(n, x, y, z, speed, color, up = 1) {
+  for (let i = 0; i < n; i++) {
+    const p = pool.find(q => q.life <= 0); if (!p) return;
+    p.m.visible = true; p.m.position.set(x, y, z); p.m.material.color.setHex(color);
+    p.vx = (Math.random() - 0.5) * speed; p.vz = (Math.random() - 0.5) * speed; p.vy = Math.random() * speed * up;
+    p.life = 0.4 + Math.random() * 0.5;
+  }
+}
+
+// ============================================================
+//  AUDIO: everything is synthesized, no files needed
+//  master <- music (<- duck) and master <- sfx
+// ============================================================
+let ac = null, masterG, musicG, duckG, sfxG, noiseBuf;
+function initAudio() {
+  if (ac) { if (ac.state === 'suspended') ac.resume(); return; }
+  try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return; }
+  masterG = ac.createGain(); masterG.connect(ac.destination);
+  duckG = ac.createGain(); duckG.connect(masterG);
+  musicG = ac.createGain(); musicG.connect(duckG);
+  sfxG = ac.createGain(); sfxG.connect(masterG);
+  noiseBuf = ac.createBuffer(1, ac.sampleRate * 0.5, ac.sampleRate);
+  const d = noiseBuf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  applyVolumes();
+  startMusic();
+}
+// browsers only allow audio after a user gesture
+addEventListener('pointerdown', initAudio);
+addEventListener('keydown', initAudio);
+
+function applyVolumes() {
+  if (!ac) return;
+  const curve = v => (v / 100) ** 2; // perceptual-ish
+  masterG.gain.value = curve(settings.master);
+  musicG.gain.value = curve(settings.music) * 0.9;
+  sfxG.gain.value = curve(settings.sfx);
+}
+
+function beep(freq, dur, type = 'square', vol = 0.07, slide = 0) {
+  if (!ac) return;
+  const o = ac.createOscillator(), g = ac.createGain();
+  o.type = type; o.frequency.value = freq;
+  if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, freq + slide), ac.currentTime + dur);
+  g.gain.value = vol; g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + dur);
+  o.connect(g); g.connect(sfxG); o.start(); o.stop(ac.currentTime + dur);
+}
+// continuous charge hum whose pitch follows the power
+let hum = null;
+function humStart() {
+  if (!ac || hum) return;
+  const o = ac.createOscillator(), g = ac.createGain();
+  o.type = 'triangle'; o.frequency.value = 200; g.gain.value = 0.04;
+  o.connect(g); g.connect(sfxG); o.start();
+  hum = { o, g };
+}
+function humSet(p) { if (hum) hum.o.frequency.value = 200 + p * 500; }
+function humStop() { if (hum) { hum.o.stop(); hum = null; } }
+
+// "doo doo dooooooo" - sad trombone on death
+function sadTrombone() {
+  if (!ac) return;
+  const t0 = ac.currentTime + 0.03;
+  const notes = [[311, 0.3], [294, 0.3], [277, 1.4]];
+  let t = t0;
+  notes.forEach(([f, d], k) => {
+    const o = ac.createOscillator(); o.type = 'sawtooth'; o.frequency.setValueAtTime(f, t);
+    const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = 5;
+    lp.frequency.setValueAtTime(350, t); lp.frequency.linearRampToValueAtTime(1300, t + 0.14); // the "wah"
+    const g = ac.createGain();
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.2, t + 0.04);
+    if (k === notes.length - 1) {
+      // long wobbly last note that sags in pitch
+      const lfo = ac.createOscillator(), lg = ac.createGain();
+      lfo.frequency.value = 5.5; lg.gain.value = 10;
+      lfo.connect(lg); lg.connect(o.frequency); lfo.start(t); lfo.stop(t + d);
+      o.frequency.linearRampToValueAtTime(f * 0.9, t + d);
+      lp.frequency.linearRampToValueAtTime(500, t + d);
+      g.gain.setValueAtTime(0.2, t + d - 0.5);
+    } else {
+      g.gain.setValueAtTime(0.2, t + d - 0.06);
+    }
+    g.gain.linearRampToValueAtTime(0, t + d);
+    o.connect(lp); lp.connect(g); g.connect(sfxG);
+    o.start(t); o.stop(t + d + 0.05);
+    t += d;
+  });
+  // duck the music under it
+  const dg = duckG.gain;
+  dg.cancelScheduledValues(t0); dg.setValueAtTime(dg.value, t0);
+  dg.linearRampToValueAtTime(0.2, t0 + 0.08); dg.setValueAtTime(0.2, t); dg.linearRampToValueAtTime(1, t + 0.8);
+}
+
+// ---------- Music: a cheerful loop engineered to slowly get on your nerves ----------
+//  * short 6.4s loop, repeats forever
+//  * every 2 loops it key-changes UP a semitone (4 times), then drops back and does it again
+//  * the lead gets more and more out of tune the longer you listen
+//  * a cowbell joins after a while; a slide whistle shows up every 3rd loop
+//  * there is a deliberately sour note in bar 3
+const NOTE_IDX = { C: 0, 'C#': 1, D: 2, 'D#': 3, E: 4, F: 5, 'F#': 6, G: 7, 'G#': 8, A: 9, 'A#': 10, B: 11 };
+function nf(n, tr = 0) {
+  const m = n.match(/^([A-G]#?)(\d)$/);
+  const midi = (+m[2] + 1) * 12 + NOTE_IDX[m[1]] + tr;
+  return 440 * Math.pow(2, (midi - 69) / 12);
+}
+const STEP = 0.2; // one eighth note at 150 BPM
+const LEAD = [
+  'C5', 'E5', 'G5', 'E5', 'A5', 'G5', 'E5', 'C5',
+  'D5', 'F5', 'A5', 'F5', 'G5', null, 'G5', null,
+  'C5', 'E5', 'G5', 'C6', 'B5', 'G5', 'F#5', 'G5', // F#5: the sour one
+  'E5', 'D5', 'C5', 'D5', 'C5', null, null, null,
+];
+const BASS_ROOTS = ['C3', 'A2', 'D3', 'G2', 'C3', 'E3', 'G2', 'C3']; // one per half bar
+const music = { on: false, next: 0, step: 0, loop: 0 };
+
+function startMusic() {
+  if (!ac || music.on) return;
+  music.on = true; music.next = ac.currentTime + 0.15;
+  setInterval(scheduleMusic, 25);
+}
+function scheduleMusic() {
+  if (music.next < ac.currentTime - 0.2) music.next = ac.currentTime + 0.05; // tab was asleep
+  while (music.next < ac.currentTime + 0.15) {
+    playStep(music.step, music.next);
+    music.next += STEP;
+    if (++music.step >= 32) { music.step = 0; music.loop++; }
+  }
+}
+function tone(type, f, t, dur, vol, detune = 0) {
+  const o = ac.createOscillator(), g = ac.createGain();
+  o.type = type; o.frequency.value = f; o.detune.value = detune;
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + 0.005);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g); g.connect(musicG); o.start(t); o.stop(t + dur + 0.02);
+}
+function noiseHit(t, dur, hp, vol) {
+  const s = ac.createBufferSource(); s.buffer = noiseBuf;
+  const f = ac.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = hp;
+  const g = ac.createGain(); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  s.connect(f); f.connect(g); g.connect(musicG); s.start(t); s.stop(t + dur + 0.02);
+}
+function kick(t) {
+  const o = ac.createOscillator(), g = ac.createGain();
+  o.frequency.setValueAtTime(150, t); o.frequency.exponentialRampToValueAtTime(45, t + 0.12);
+  g.gain.setValueAtTime(0.35, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.15);
+  o.connect(g); g.connect(musicG); o.start(t); o.stop(t + 0.16);
+}
+function cowbell(t) {
+  for (const f of [560, 845]) tone('square', f, t, 0.09, 0.035);
+}
+function slideWhistle(t) {
+  const o = ac.createOscillator(), g = ac.createGain();
+  o.type = 'sine'; o.frequency.setValueAtTime(500, t); o.frequency.exponentialRampToValueAtTime(1700, t + 0.55);
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.06, t + 0.05); g.gain.linearRampToValueAtTime(0, t + 0.6);
+  o.connect(g); g.connect(musicG); o.start(t); o.stop(t + 0.62);
+}
+function playStep(i, t) {
+  const loop = music.loop;
+  const tr = Math.floor(loop / 2) % 5;          // creeping key change: 0,0,1,1,2,2,3,3,4,4,0,0...
+  const wobble = Math.min(45, loop * 2.5);      // cents of out-of-tune-ness, grows over time
+  const n = LEAD[i];
+  if (n) tone('square', nf(n, tr), t, 0.17, 0.05, (Math.random() * 2 - 1) * wobble);
+  tone('triangle', nf(BASS_ROOTS[i >> 2], tr + (i % 2 ? 12 : 0)), t, 0.18, 0.14);
+  const b = i % 8;
+  if (b === 0 || b === 4) kick(t);
+  if (b === 2 || b === 6) noiseHit(t, 0.12, 1500, 0.12);
+  noiseHit(t, 0.035, 7000, 0.04);
+  if (loop >= 2 && b === 7) cowbell(t);
+  if (loop % 3 === 2 && i === 28) slideWhistle(t);
+}
+
+// ---------- Level building ----------
+const COLORS = [0x5cb85c, 0x3c7be0, 0xe2574c, 0xf6c945, 0x9b59d0, 0x3ddc84];
+const spikeMat = new THREE.MeshStandardMaterial({ color: 0xc9ced6, metalness: 0.7, roughness: 0.3 });
+const spikeGeo = new THREE.ConeGeometry(0.17, 0.55, 6);
+let levelGroup = new THREE.Group(); scene.add(levelGroup);
+let platforms = [], spikes = [], finish = null, levelIndex = 0;
+
+function syncPlatform(p) {
+  p.minX = p.x - p.w / 2; p.maxX = p.x + p.w / 2;
+  p.minZ = p.z - p.d / 2; p.maxZ = p.z + p.d / 2;
+  p.minY = p.top - p.h;   p.maxY = p.top;
+  p.mesh.position.set(p.x, p.top - p.h / 2, p.z);
+}
+
+function buildLevel(L) {
+  scene.remove(levelGroup);
+  levelGroup.traverse(o => {
+    if (!o.isMesh || o.geometry === spikeGeo) return;
+    o.geometry.dispose();
+    [].concat(o.material).forEach(m => m.dispose());
+  });
+  levelGroup = new THREE.Group(); scene.add(levelGroup);
+
+  platforms = L.platforms.map((src, i) => {
+    const p = { ...src, h: src.h || 14, dx: 0, dy: 0, dz: 0 };
+    p.base = { x: p.x, y: p.top, z: p.z };
+    const color = p.move ? 0xd98a3a : COLORS[(i + levelIndex * 2) % COLORS.length];
+    const side = new THREE.MeshStandardMaterial({ color: new THREE.Color(color).multiplyScalar(0.72), roughness: 0.8 });
+    const top = new THREE.MeshStandardMaterial({ color, roughness: 0.6 });
+    p.mesh = new THREE.Mesh(new THREE.BoxGeometry(p.w, p.h, p.d), [side, side, top, side, side, side]);
+    p.mesh.receiveShadow = true; p.mesh.castShadow = true;
+    levelGroup.add(p.mesh);
+    syncPlatform(p);
+    return p;
+  });
+
+  spikes = L.spikes.map(s => ({ ...s }));
+  for (const s of spikes) {
+    const nx = Math.max(1, Math.round(s.w / 0.4)), nz = Math.max(1, Math.round(s.d / 0.4));
+    for (let ix = 0; ix < nx; ix++) for (let iz = 0; iz < nz; iz++) {
+      const m = new THREE.Mesh(spikeGeo, spikeMat);
+      m.position.set(s.x - s.w / 2 + (ix + 0.5) * (s.w / nx), s.top + 0.27, s.z - s.d / 2 + (iz + 0.5) * (s.d / nz));
+      m.castShadow = true; levelGroup.add(m);
+    }
+  }
+
+  finish = L.finish;
+  const last = levelIndex === LEVELS.length - 1;
+  trophy.visible = last; portal.visible = !last;
+}
+
+// ---------- Input ----------
+const keys = {};
+let camYaw = 0, camPitch = 0.35, dragging = false;
+let modeKey = 'baby', M = MODES.baby; // chosen on the mode screen, locked for the run
+let state = 'menu';        // menu | playing | paused | levelDone | finished
+addEventListener('keydown', e => {
+  if (e.code === 'Space') e.preventDefault();
+  if (e.code === 'KeyR' && !e.repeat && state === 'playing') respawn();
+  if (e.code === 'Enter' && state === 'levelDone') doneT = 0;
+  if ((e.code === 'ShiftLeft' || e.code === 'ShiftRight') && !e.repeat && (state === 'playing' || state === 'levelDone')) {
+    // Shift = free / recapture the mouse (Esc is pause)
+    if (isLocked()) { freeingMouse = true; document.exitPointerLock?.(); } else lockMouse();
+  }
+  if (e.code === 'Escape' && !e.repeat) {
+    if (state === 'playing') pause();
+    else if (state === 'paused') {
+      if (!$('settingsMenu').classList.contains('hidden')) closeSettings(); else resume();
+    } else if (!$('settingsMenu').classList.contains('hidden')) closeSettings();
+  }
+  keys[e.code] = true;
+});
+addEventListener('keyup', e => { keys[e.code] = false; });
+addEventListener('blur', () => { for (const k in keys) keys[k] = false; if (state === 'playing') pause(); });
+
+const isLocked = () => document.pointerLockElement === renderer.domElement;
+const shiftLock = () => M.shiftLock && isLocked();
+function lockMouse() {
+  try { const r = renderer.domElement.requestPointerLock?.(); if (r && r.catch) r.catch(() => {}); } catch (e) {}
+}
+
+renderer.domElement.addEventListener('mousedown', () => {
+  dragging = true;
+  if (state === 'playing' && !isLocked()) lockMouse();
+});
+addEventListener('mouseup', () => dragging = false);
+let freeingMouse = false;
+document.addEventListener('pointerlockchange', () => {
+  if (isLocked()) return;
+  if (freeingMouse) { freeingMouse = false; return; } // Shift freed it: keep playing
+  if (state === 'playing') pause();                     // Esc while locked = pause
+});
+addEventListener('mousemove', e => {
+  if (state !== 'playing' && state !== 'levelDone') return;
+  if (isLocked() || dragging) {
+    const s = T.mouseSens * settings.sens;
+    if (!M.tank) camYaw -= e.movementX * s; // god mode: mouse can't turn
+    camPitch = Math.min(1.25, Math.max(-0.15, camPitch + e.movementY * s * (settings.invertY ? -1 : 1)));
+  }
+});
+
+// ---------- UI / screens ----------
+const $ = id => document.getElementById(id);
+const $deaths = $('deaths'), $time = $('time'), $msg = $('msg'), $banner = $('banner'), $lookhint = $('lookhint');
+const SCREENS = ['mainMenu', 'modeMenu', 'howMenu', 'settingsMenu', 'pauseMenu', 'end'];
+function show(id) {
+  for (const s of SCREENS) $(s).classList.toggle('hidden', s !== id);
+  document.body.classList.toggle('inmenu', state === 'menu');
+}
+function click() { beep(660, 0.05, 'square', 0.05); }
+document.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => {
+  click();
+  if (b.dataset.go === 'mainMenu') goMainMenu(); else show(b.dataset.go);
+}));
+
+function goMainMenu() {
+  state = 'menu';
+  document.exitPointerLock?.();
+  levelIndex = 0; buildLevel(LEVELS[0]); respawn();
+  $msg.textContent = ''; $banner.style.opacity = 0;
+  updateBest();
+  show('mainMenu');
+}
+function updateBest() {
+  const line = k => {
+    const label = MODES[k].name;
+    return best[k] ? `${label}: 💀 ${best[k].deaths} deaths · ⏱ ${fmt(best[k].time)}` : `${label}: not beaten yet`;
+  };
+  $('bestText').innerHTML = '🏆 Best runs<br>' + Object.keys(MODES).map(line).join('<br>');
+}
+
+// settings screen
+let settingsFrom = 'mainMenu';
+const sliders = [
+  ['sMaster', 'oMaster', 'master', v => v + '%'],
+  ['sMusic', 'oMusic', 'music', v => v + '%'],
+  ['sSfx', 'oSfx', 'sfx', v => v + '%'],
+  ['sSens', 'oSens', 'sens', v => (+v).toFixed(2) + 'x'],
+];
+function syncSettingsUI() {
+  for (const [s, o, key, f] of sliders) { $(s).value = settings[key]; $(o).textContent = f(settings[key]); }
+  $('sInvert').checked = settings.invertY;
+}
+for (const [s, o, key, f] of sliders) {
+  $(s).addEventListener('input', () => {
+    settings[key] = +$(s).value; $(o).textContent = f(settings[key]);
+    applyVolumes(); saveSettings();
+  });
+}
+$('sSfx').addEventListener('change', () => beep(520, 0.12, 'square', 0.07)); // preview
+$('sInvert').addEventListener('change', () => { settings.invertY = $('sInvert').checked; saveSettings(); });
+function openSettings(from) { settingsFrom = from; syncSettingsUI(); click(); show('settingsMenu'); }
+function closeSettings() { click(); show(settingsFrom); }
+$('btnSettingsMain').addEventListener('click', () => openSettings('mainMenu'));
+$('btnSettingsPause').addEventListener('click', () => openSettings('pauseMenu'));
+$('btnSettingsBack').addEventListener('click', closeSettings);
+$('btnSettingsReset').addEventListener('click', () => {
+  Object.assign(settings, DEFAULTS); saveSettings(); applyVolumes(); syncSettingsUI(); click();
+});
+
+// pause
+function pause() {
+  if (state !== 'playing') return;
+  state = 'paused';
+  billy.charging = false; humStop();
+  for (const k in keys) keys[k] = false;
+  document.exitPointerLock?.();
+  show('pauseMenu');
+}
+function resume() {
+  if (state !== 'paused') return;
+  click();
+  state = 'playing'; show(null);
+  lockMouse();
+}
+$('btnResume').addEventListener('click', resume);
+$('btnRestartLvl').addEventListener('click', () => { respawn(); resume(); });
+$('btnQuit').addEventListener('click', () => { click(); goMainMenu(); });
+
+// run start
+document.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => startRun(b.dataset.mode)));
+function startRun(key) {
+  modeKey = key; M = MODES[key]; click();
+  const badge = $('mode');
+  badge.className = 'panel ' + key;
+  badge.textContent = M.badge;
+  $('tip').textContent = M.tip;
+  $('lvlcount').textContent = LEVELS.length;
+  deaths = 0; runTime = 0; levelDeaths = [];
+  loadLevel(0);
+  show(null);
+  lockMouse();
+}
+
+let bannerT = 0;
+function loadLevel(i) {
+  levelIndex = i;
+  const L = LEVELS[i];
+  levelDeaths[i] = 0; levelTime = 0;
+  buildLevel(L);
+  $('lvl').textContent = i + 1; $('lvlname').textContent = L.name;
+  $banner.innerHTML = `<div class="num">LEVEL ${i + 1}</div><div class="name">${L.name}</div>`;
+  $banner.style.opacity = 1; bannerT = 2.2;
+  state = 'playing';
+  respawn();
+  camTarget.set(billy.x, billy.y, billy.z);
+}
+
+// ---------- Game state ----------
+let deaths = 0, runTime = 0, levelTime = 0, levelDeaths = [], shake = 0, time = 0, doneT = 0;
+const camTarget = new THREE.Vector3();
+
+function respawn() {
+  const s = LEVELS[levelIndex].spawn;
+  Object.assign(billy, { x: s.x, y: s.top + HY, z: s.z, vx: 0, vy: 0, vz: 0,
+    yaw: 0, angle: 0, flipping: false, dead: false, grounded: false, ground: null,
+    charging: false, power: 0 });
+  humStop();
+  camYaw = 0;
+  $msg.textContent = '';
+}
+function die(cause) {
+  if (billy.dead || state !== 'playing') return;
+  billy.charging = false; humStop();
+  billy.dead = true; billy.deadT = T.deathTime; billy.spin = (Math.random() < 0.5 ? -1 : 1) * (9 + Math.random() * 6);
+  billy.vx = (Math.random() - 0.5) * 6; billy.vz = (Math.random() - 0.5) * 6; billy.vy = 9;
+  deaths++; levelDeaths[levelIndex]++; shake = 0.5;
+  $msg.innerHTML = `${pickInsult(cause)}<span class="sub">💀 ${deaths}</span>`;
+  sadTrombone();
+  burst(24, billy.x, billy.y, billy.z, 9, 0xe2574c);
+  burst(14, billy.x, billy.y, billy.z, 7, 0xf2c29b);
+}
+function fmt(t) { return `${Math.floor(t / 60)}:${(t % 60).toFixed(1).padStart(4, '0')}`; }
+
+function reachFinish() {
+  const last = levelIndex === LEVELS.length - 1;
+  burst(40, billy.x, billy.y + 1, billy.z, 10, last ? 0xf6c945 : 0x3ddc84);
+  billy.vx = billy.vz = 0; billy.flipping = false; billy.angle = 0;
+  billy.charging = false; humStop();
+  if (last) { finishRun(); return; }
+  state = 'levelDone'; doneT = 2.5;
+  const n = levelDeaths[levelIndex];
+  const quip = n === 0 ? 'Zero deaths?! Suspicious.' : n < 5 ? 'Not bad. Not good either.' : n < 20 ? 'Finally.' : 'That took forever.';
+  $msg.innerHTML = `LEVEL ${levelIndex + 1} COMPLETE!<span class="sub">${quip} · ${n} deaths · Enter to continue</span>`;
+  [523, 659, 784].forEach((f, i) => setTimeout(() => beep(f, 0.2, 'triangle', 0.1), i * 110));
+}
+
+function finishRun() {
+  state = 'finished';
+  $msg.textContent = '';
+  [523, 659, 784, 1047, 1319].forEach((f, i) => setTimeout(() => beep(f, 0.3, 'triangle', 0.1), i * 130));
+  document.exitPointerLock?.();
+  const b = best[modeKey];
+  const isBest = !b || deaths < b.deaths || (deaths === b.deaths && runTime < b.time);
+  if (isBest) { best[modeKey] = { deaths, time: runTime }; try { localStorage.setItem('bb_best2', JSON.stringify(best)); } catch (e) {} }
+  $('endMode').innerHTML = M.end + (isBest ? '<br>⭐ New personal best!' : '');
+  $('endTable').innerHTML =
+    LEVELS.map((L, i) => `<tr><td>Level ${i + 1}: ${L.name}</td><td>💀 ${levelDeaths[i]}</td></tr>`).join('') +
+    `<tr><td>Total deaths</td><td>💀 ${deaths}</td></tr><tr><td>Total time</td><td>⏱ ${fmt(runTime)}</td></tr>`;
+  setTimeout(() => { if (state === 'finished') show('end'); }, 1200);
+}
+
+function overlaps(p) {
+  return billy.x + HX > p.minX && billy.x - HX < p.maxX &&
+         billy.z + HX > p.minZ && billy.z - HX < p.maxZ &&
+         billy.y + HY > p.minY && billy.y - HY < p.maxY;
+}
+function angDiff(a, b) { return Math.atan2(Math.sin(a - b), Math.cos(a - b)); }
+
+// ---------- Simulation ----------
+function step(dt) {
+  if (state === 'paused') return; // freeze everything
+  time += dt; levelTime += dt;
+  for (const p of platforms) {
+    if (!p.move) continue;
+    const m = p.move, o = Math.sin(levelTime * m.speed + (m.phase || 0)) * m.range;
+    const ox = p.x, oy = p.top, oz = p.z;
+    if (m.axis === 'x') p.x = p.base.x + o;
+    else if (m.axis === 'z') p.z = p.base.z + o;
+    else p.top = p.base.y + o;
+    p.dx = p.x - ox; p.dy = p.top - oy; p.dz = p.z - oz;
+    syncPlatform(p);
+  }
+  for (const p of pool) {
+    if (p.life <= 0) continue;
+    p.life -= dt; p.vy -= 25 * dt;
+    p.m.position.x += p.vx * dt; p.m.position.y += p.vy * dt; p.m.position.z += p.vz * dt;
+    p.m.rotation.x += dt * 8;
+    if (p.life <= 0) p.m.visible = false;
+  }
+  if (bannerT > 0 && (bannerT -= dt) <= 0) $banner.style.opacity = 0;
+
+  if (state === 'levelDone') {
+    billy.yaw += dt * 8; // victory spin
+    if ((doneT -= dt) <= 0) loadLevel(levelIndex + 1);
+    return;
+  }
+  if (state !== 'playing') return;
+  runTime += dt;
+
+  if (billy.dead) {
+    billy.vy -= T.gravity * dt;
+    billy.x += billy.vx * dt; billy.y += billy.vy * dt; billy.z += billy.vz * dt;
+    billy.angle += billy.spin * dt;
+    if ((billy.deadT -= dt) <= 0) respawn();
+    return;
+  }
+
+  // ride moving platform
+  const g = billy.grounded && billy.ground;
+  if (g) { billy.x += g.dx; billy.z += g.dz; billy.y += g.dy; }
+
+  let ix = (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0);
+  let iz = (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0);
+  if (M.invert) { ix = -ix; iz = -iz; } // the milk
+  let mx = 0, mz = 0;
+  if (M.tank) {
+    // god mode tank controls: A/D rotate Billy, W/S walk along his facing (can't turn mid-air)
+    if (billy.grounded) billy.yaw -= ix * TANK_TURN * dt;
+    if (iz) { mx = -Math.sin(billy.yaw) * iz; mz = -Math.cos(billy.yaw) * iz; }
+    // camera is glued behind Billy
+    camYaw += angDiff(billy.yaw, camYaw) * Math.min(1, dt * 6);
+  } else if (ix || iz) {
+    // camera-relative input
+    const fx = -Math.sin(camYaw), fz = -Math.cos(camYaw);
+    const rx = Math.cos(camYaw),  rz = -Math.sin(camYaw);
+    mx = fx * iz + rx * ix; mz = fz * iz + rz * ix;
+    const len = Math.hypot(mx, mz); mx /= len; mz /= len;
+  }
+
+  if (billy.grounded) {
+    // can't walk while charging, only turn
+    const walk = billy.charging ? 0 : T.walkSpeed;
+    billy.vx = mx * walk; billy.vz = mz * walk;
+    if (M.tank) {
+      // facing handled by tank controls above
+    } else if (shiftLock()) {
+      billy.yaw += angDiff(camYaw, billy.yaw) * Math.min(1, dt * 25);
+    } else if (mx || mz) {
+      billy.yaw += angDiff(Math.atan2(-mx, -mz), billy.yaw) * Math.min(1, dt * T.turnRate);
+    }
+    if ((mx || mz) && !billy.charging) billy.walkT += dt * 11; else billy.walkT = 0;
+
+    if (keys.Space && !billy.charging) {
+      billy.charging = true; billy.chargeT = 0; billy.power = 0; humStart();
+    }
+    if (billy.charging) {
+      billy.chargeT += dt;
+      billy.power = chargePower(billy.chargeT);
+      humSet(billy.power);
+      if (!keys.Space) {
+        // THE mechanic: Billy only goes backwards. Power decides how far.
+        const p = billy.power;
+        const up = T.flipUpMin + (T.flipUpMax - T.flipUpMin) * p;
+        const back = T.flipBackMin + (T.flipBackMax - T.flipBackMin) * p;
+        const fx = -Math.sin(billy.yaw), fz = -Math.cos(billy.yaw);
+        billy.vx = -fx * back; billy.vz = -fz * back; billy.vy = up;
+        billy.flipTime = (2 * up / T.gravity) * T.flipSpin;
+        billy.grounded = false; billy.ground = null; billy.flipping = true; billy.flipT = 0;
+        billy.charging = false; humStop();
+        beep(400 + p * 400, 0.15, 'square', 0.06, 380);
+        burst(6 + Math.round(p * 10), billy.x, billy.y - HY, billy.z, 2.5 + p * 3, 0xcfc6b0, 0.6);
+      }
+    }
+  } else if (billy.charging) {
+    billy.charging = false; humStop(); // lost footing: charge wasted
+  }
+
+  if (billy.flipping) {
+    billy.flipT += dt;
+    billy.angle = Math.min(billy.flipT / billy.flipTime, 1) * Math.PI * 2;
+  }
+  billy.vy -= T.gravity * dt;
+
+  billy.x += billy.vx * dt; pushOut('x');
+  billy.z += billy.vz * dt; pushOut('z');
+
+  const wasGrounded = billy.grounded;
+  billy.grounded = false;
+  billy.y += billy.vy * dt;
+  for (const p of platforms) {
+    if (!overlaps(p)) continue;
+    if (billy.vy <= 0) {
+      billy.y = p.maxY + HY; billy.vy = 0; billy.grounded = true; billy.ground = p;
+      if (billy.flipping) land();
+      else if (!wasGrounded) burst(4, billy.x, billy.y - HY, billy.z, 2, 0xcfc6b0, 0.5);
+    } else {
+      billy.y = p.minY - HY; billy.vy = 0;
+    }
+  }
+  if (!billy.grounded) billy.ground = null;
+  if (billy.dead) return;
+
+  for (const s of spikes) {
+    if (billy.x + HX - 0.1 > s.x - s.w / 2 && billy.x - HX + 0.1 < s.x + s.w / 2 &&
+        billy.z + HX - 0.1 > s.z - s.d / 2 && billy.z - HX + 0.1 < s.z + s.d / 2 &&
+        billy.y - HY < s.top + 0.45) die('spikes');
+  }
+  if (billy.y < -10) die('void');
+  if (billy.dead) return;
+
+  if (Math.hypot(billy.x - finish.x, billy.z - finish.z) < 1.1 && Math.abs(billy.y - HY - finish.top) < 1.2) reachFinish();
+}
+
+function pushOut(axis) {
+  const lo = axis === 'x' ? 'minX' : 'minZ', hi = axis === 'x' ? 'maxX' : 'maxZ';
+  for (const p of platforms) {
+    if (!overlaps(p)) continue;
+    if (billy.y - HY >= p.maxY - 0.15) continue; // standing on top, not a wall
+    const a = billy[axis];
+    const penLo = (a + HX) - p[lo], penHi = p[hi] - (a - HX);
+    billy[axis] = penLo < penHi ? a - penLo : a + penHi;
+    billy['v' + axis] = 0;
+  }
+}
+
+function land() {
+  billy.flipping = false;
+  const deg = billy.angle * 180 / Math.PI;
+  if (Math.min(deg, 360 - deg) > T.safeLandDeg) { die('head'); return; }
+  billy.angle = 0;
+  beep(220, 0.06, 'square', 0.05);
+  burst(8, billy.x, billy.y - HY, billy.z, 3, 0xcfc6b0, 0.5);
+}
+
+// ---------- Render ----------
+let camSide = 0;
+const tmpV = new THREE.Vector3();
+const $crosshair = $('crosshair'), $charge = $('charge'), $chargeFill = $('chargeFill'), $chargePct = $('chargePct');
+
+function updateVisuals() {
+  const inMenu = state === 'menu';
+  let hop = 0, angle = billy.angle;
+  if (inMenu) {
+    // main menu: camera orbits while Billy shows off little backflips
+    camYaw = time * 0.18; camPitch = 0.25;
+    billy.yaw = camYaw + Math.PI * 0.75;
+    const ph = time % 2.6;
+    if (ph < 0.7) { const u = ph / 0.7; angle = u * Math.PI * 2; hop = Math.sin(u * Math.PI) * 1.4; } else angle = 0;
+  }
+  billyRoot.position.set(billy.x, billy.y + hop, billy.z);
+  yawG.rotation.y = billy.yaw;
+  flipG.rotation.x = angle;
+  flipG.rotation.z = billy.dead ? billy.angle * 0.6 : 0;
+  mouth.scale.y = billy.dead ? 4 : 1;
+  // crouch/squash while charging
+  const sq = billy.charging ? billy.power : 0;
+  yawG.scale.set(1 + sq * 0.12, 1 - sq * 0.22, 1 + sq * 0.12);
+  yawG.position.y = -sq * 0.19;
+  $charge.classList.toggle('hidden', !billy.charging || state !== 'playing');
+  if (billy.charging) {
+    const p = billy.power;
+    $chargeFill.style.width = (p * 100) + '%';
+    $chargeFill.style.background = `hsl(${120 - p * 120}, 85%, 50%)`;
+    $chargePct.textContent = Math.round(p * 100) + '%';
+  }
+
+  let legA, armA;
+  const flipPose = billy.flipping || billy.dead || (inMenu && hop > 0);
+  if (flipPose) { legA = 1.3; armA = 2.6; }
+  else if (state === 'levelDone' || state === 'finished') { legA = 0; armA = 3; }
+  else if (!billy.grounded && !inMenu) { legA = 0.3; armA = 1.2; }
+  else { legA = Math.sin(billy.walkT) * 0.7; armA = -legA; }
+  const sym = flipPose || (!billy.grounded && !inMenu) || (state !== 'playing' && !inMenu);
+  legL.rotation.x = legA; legR.rotation.x = sym ? legA : -legA;
+  armL.rotation.x = armA; armR.rotation.x = sym ? armA : -armA;
+
+  if (finish) {
+    trophy.position.set(finish.x, finish.top + 0.3 + Math.sin(time * 3) * 0.12, finish.z);
+    trophy.rotation.y = time * 1.5;
+    portal.position.set(finish.x, finish.top + 1.2, finish.z);
+    portal.rotation.y = Math.sin(time * 1.5) * 0.4;
+    portal.children[1].material.opacity = 0.25 + Math.sin(time * 4) * 0.1;
+  }
+
+  // camera
+  if (!billy.dead) camTarget.lerp(tmpV.set(billy.x, billy.y + 0.6, billy.z), 0.12);
+  const sl = shiftLock();
+  $crosshair.classList.toggle('hidden', !sl || state !== 'playing');
+  $lookhint.classList.toggle('hidden', state !== 'playing' || isLocked());
+  camSide += ((sl ? 1 : 0) - camSide) * 0.15;
+  const d = (inMenu ? 8 : T.camDist) + (T.shiftLockDist - T.camDist) * camSide;
+  const off = T.shoulderOffset * camSide;
+  const ox = Math.cos(camYaw) * off, oz = -Math.sin(camYaw) * off;
+  camera.position.set(
+    camTarget.x + ox + Math.sin(camYaw) * Math.cos(camPitch) * d,
+    camTarget.y + Math.sin(camPitch) * d + 0.8,
+    camTarget.z + oz + Math.cos(camYaw) * Math.cos(camPitch) * d,
+  );
+  shake *= 0.88;
+  camera.position.x += (Math.random() - 0.5) * shake;
+  camera.position.y += (Math.random() - 0.5) * shake;
+  camera.lookAt(camTarget.x + ox, camTarget.y + 0.8, camTarget.z + oz);
+
+  sun.position.set(billy.x + 6, billy.y + 18, billy.z + 4);
+  sun.target.position.set(billy.x, billy.y, billy.z);
+
+  $deaths.textContent = deaths; $time.textContent = fmt(runTime);
+}
+
+let last = performance.now(), acc = 0;
+const DT = 1 / 120;
+function frame(now) {
+  acc += Math.min(0.1, (now - last) / 1000); last = now;
+  while (acc >= DT) { step(DT); acc -= DT; }
+  updateVisuals();
+  renderer.render(scene, camera);
+  requestAnimationFrame(frame);
+}
+goMainMenu();
+camTarget.set(billy.x, billy.y, billy.z);
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
