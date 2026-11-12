@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Backflipping Billy</title>
+<link rel="icon" type="image/svg+xml" href="logo-icon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
@@ -226,6 +227,126 @@
   .endTable td { padding: 9px 4px; border-bottom: 1px solid var(--line); text-align: left; }
   .endTable td:last-child { text-align: right; font-variant-numeric: tabular-nums; }
   .endTable tr.total td { color: var(--gold); }
+
+  /* ---------- Logo ---------- */
+  .logo { display: block; width: clamp(84px, 11vw, 124px); height: auto; margin-bottom: 4px; cursor: pointer;
+          filter: drop-shadow(0 6px 0 rgba(0,0,0,.25)); }
+  @media (max-width: 800px) { .logo { margin: 0 auto 4px; } }
+
+  /* ---------- Cutscene ---------- */
+  .cineBar { position: fixed; left: 0; right: 0; height: 0; background: #000; z-index: 4; pointer-events: none; transition: height .8s ease; }
+  #barTop { top: 0; } #barBot { bottom: 0; }
+  body.cine .cineBar { height: 11vh; }
+  body.cine .hud, body.cine #crosshair, body.cine #charge { display: none !important; }
+  #skipHint { position: fixed; right: 18px; bottom: 3.5vh; z-index: 4; display: none; font-size: 13px; font-weight: 800;
+              color: rgba(255,255,255,.55); letter-spacing: .08em; }
+  body.cine #skipHint { display: block; }
+  #fade { position: fixed; inset: 0; background: #000; opacity: 0; pointer-events: none; z-index: 8; transition: opacity 1.4s ease; }
+  body.fading #fade { opacity: 1; }
+  #theEnd { background: #000; gap: 20px; }
+  #theEnd .endTitle { font-family: var(--display); font-weight: 800; font-size: clamp(64px, 14vw, 170px); line-height: .9; letter-spacing: .06em;
+                      color: var(--yellow); text-shadow: 0 6px 0 var(--red-deep), 0 0 60px rgba(246,201,69,.35);
+                      opacity: 0; animation: endIn 1.8s .6s forwards; }
+  #theEnd .endBy { font-size: clamp(15px, 2.2vw, 22px); font-weight: 800; letter-spacing: .32em; text-transform: uppercase; color: var(--muted);
+                   opacity: 0; animation: endIn 1.4s 2.6s forwards; }
+  #theEnd .btn { margin-top: 18px; opacity: 0; animation: endFade .8s 4.4s forwards; }
+  @keyframes endIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+  @keyframes endFade { to { opacity: 1; } }
+
+  /* ---------- Level map (one themed map per mode, harder = darker) ---------- */
+  #levelMenu { gap: 14px; isolation: isolate; overflow-x: hidden; }
+  #levelMenu > * { position: relative; z-index: 1; }
+  #levelMenu::before, #levelMenu::after { content: ''; position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+  #levelMenu .panelHead { text-shadow: 0 3px 0 rgba(0,0,0,.3); }
+  #levelMenu .eyebrow { color: var(--acc); }
+  #levelMenu .muted { color: rgba(255,255,255,.85); }
+  .mapScroll { align-self: stretch; min-width: 0; max-width: 100%; overflow-x: auto; overflow-y: hidden; padding: 4px 16px 8px; }
+  #levelMenu > .panelHead, #levelMenu > .mapHint { max-width: 100%; }
+  .map { position: relative; margin: 0 auto; width: min(1100px, 100%); min-width: 900px; aspect-ratio: 1000 / 380; }
+  .map > svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+  .t-shadow { fill: none; stroke: rgba(0,0,0,.28); stroke-width: 16; stroke-linecap: round; }
+  .t-base { fill: none; stroke: rgba(255,255,255,.55); stroke-width: 7; stroke-linecap: round; stroke-dasharray: 1 17; }
+  .t-done { fill: none; stroke: var(--acc); stroke-width: 9; stroke-linecap: round; }
+  .stop { position: absolute; width: 0; height: 0; }
+  .node { --b: var(--acc); --e: var(--acc-edge); position: absolute; left: -29px; top: -29px; width: 58px; height: 58px; padding: 0;
+          border-radius: 50%; border: 3px solid rgba(255,255,255,.9); background: var(--b); color: var(--acc-ink);
+          font: 800 24px var(--display); display: grid; place-items: center; cursor: pointer;
+          box-shadow: 0 5px 0 var(--e), 0 10px 18px rgba(0,0,0,.35); transition: filter .12s, scale .12s; }
+  .node:hover:not(:disabled) { filter: brightness(1.12); scale: 1.08; }
+  .node:focus-visible { outline: 3px solid #fff; outline-offset: 4px; }
+  .node.cleared { --b: var(--green); --e: #1f8a52; color: var(--green-ink); }
+  .node:disabled { --b: #161b33; --e: #0a0d1c; color: rgba(255,255,255,.5); border-color: rgba(255,255,255,.3); cursor: not-allowed; }
+  .node:disabled svg { width: 22px; height: 22px; }
+  .node .tick { position: absolute; top: -6px; right: -6px; width: 22px; height: 22px; border-radius: 50%; background: #fff;
+                color: #1f8a52; display: grid; place-items: center; box-shadow: 0 2px 0 rgba(0,0,0,.25); }
+  .node .tick svg { width: 14px; height: 14px; }
+  .node.next::before { content: ''; position: absolute; inset: -10px; border-radius: 50%; border: 3px solid var(--acc);
+                       animation: mapRing 1.5s ease-out infinite; pointer-events: none; }
+  @keyframes mapRing { from { opacity: .9; transform: scale(.85); } to { opacity: 0; transform: scale(1.35); } }
+  .stop.final .node { left: -37px; top: -37px; width: 74px; height: 74px; font-size: 28px; }
+  .nlab { position: absolute; left: -64px; width: 128px; text-align: center; font: 800 13px/1.2 var(--body); color: #fff; pointer-events: none;
+          text-shadow: 0 2px 0 rgba(0,0,0,.55), 0 0 10px rgba(0,0,0,.5); }
+  .nlab small { display: block; margin-top: 2px; font-size: 11px; font-weight: 800; color: rgba(255,255,255,.78); }
+  .stop.up .nlab { bottom: 40px; } .stop.down .nlab { top: 40px; }
+  .stop.final.up .nlab { bottom: 48px; } .stop.final.down .nlab { top: 48px; }
+  .you { position: absolute; left: -26px; width: 52px; padding: 3px 0; border-radius: 999px; text-align: center; pointer-events: none;
+         font: 900 11px var(--body); letter-spacing: .14em; background: var(--yellow); color: var(--yellow-ink);
+         box-shadow: 0 3px 0 var(--yellow-deep); animation: youBob 1s ease-in-out infinite alternate; }
+  .stop.up .you { top: 42px; } .stop.down .you { bottom: 42px; }
+  .stop.final.up .you { top: 50px; } .stop.final.down .you { bottom: 50px; }
+  @keyframes youBob { to { translate: 0 -5px; } }
+  .mapHint { font-size: 13px; font-weight: 800; color: rgba(255,255,255,.8); margin: 0; text-shadow: 0 2px 0 rgba(0,0,0,.4); }
+
+  /* Tier I: sunny meadow */
+  #levelMenu.theme-baby { --acc: #9cc7ff; --acc-edge: #3f6fbf; --acc-ink: var(--navy-deep);
+    background: linear-gradient(180deg, #2a74c4 0%, #4fa6e6 50%, #8fd0f5 100%); }
+  .theme-baby::before { background:
+    radial-gradient(ellipse 130px 42px at 14% 16%, rgba(255,255,255,.6), transparent 70%),
+    radial-gradient(ellipse 90px 30px at 20% 12%, rgba(255,255,255,.5), transparent 70%),
+    radial-gradient(ellipse 170px 52px at 80% 11%, rgba(255,255,255,.5), transparent 70%),
+    radial-gradient(ellipse 110px 34px at 55% 26%, rgba(255,255,255,.35), transparent 70%); }
+  .theme-baby::after { background:
+    radial-gradient(ellipse 75% 34% at 18% 112%, #3f9b4f 98%, transparent 100%),
+    radial-gradient(ellipse 70% 30% at 88% 112%, #2f7a3d 98%, transparent 100%),
+    radial-gradient(ellipse 55% 26% at 55% 118%, #4bb05c 98%, transparent 100%); }
+
+  /* Tier II: sunset dunes */
+  #levelMenu.theme-pro { --acc: var(--yellow); --acc-edge: var(--yellow-deep); --acc-ink: var(--yellow-ink);
+    background: linear-gradient(180deg, #2b1846 0%, #6e2a4c 36%, #c8553a 68%, #ee9b3e 100%); }
+  .theme-pro::before { background:
+    radial-gradient(circle at 76% 64%, #ffe08a 0 62px, rgba(255,224,138,.28) 63px 96px, transparent 97px); }
+  .theme-pro::after { background:
+    radial-gradient(ellipse 72% 28% at 22% 110%, #c9772e 98%, transparent 100%),
+    radial-gradient(ellipse 66% 24% at 86% 108%, #a85a1f 98%, transparent 100%); }
+
+  /* Tier III: volcanic peaks */
+  #levelMenu.theme-chad { --acc: var(--red); --acc-edge: var(--red-deep); --acc-ink: #fff;
+    background: radial-gradient(ellipse 85% 45% at 50% 100%, rgba(255,110,40,.6), transparent 70%),
+                linear-gradient(180deg, #0c0406 0%, #260809 55%, #44100a 100%); }
+  .theme-chad::before { background:
+    radial-gradient(circle, rgba(255,150,70,.95) 0 1.5px, transparent 2.5px) 0 0 / 71px 89px,
+    radial-gradient(circle, rgba(255,90,40,.8) 0 2px, transparent 3px) 30px 40px / 113px 131px,
+    radial-gradient(circle, rgba(255,200,120,.7) 0 1px, transparent 2px) 55px 15px / 167px 59px;
+    animation: embers 7s linear infinite; }
+  @keyframes embers { to { background-position: 0 -890px, 30px -1270px, 55px -575px; } }
+  #levelMenu.theme-chad::after { top: auto; height: 34%; background: linear-gradient(180deg, #1d0708, #0f0304);
+    clip-path: polygon(0 62%, 7% 24%, 14% 52%, 24% 6%, 34% 48%, 44% 22%, 54% 58%, 64% 8%, 74% 44%, 84% 16%, 93% 50%, 100% 28%, 100% 100%, 0 100%); }
+
+  /* Tier Infinity: the milky void */
+  #levelMenu.theme-god { --acc: var(--milk); --acc-edge: #8f9ac4; --acc-ink: var(--navy-deep);
+    background: radial-gradient(ellipse 60% 40% at 70% 35%, rgba(238,243,255,.16), transparent 70%),
+                radial-gradient(ellipse 50% 32% at 22% 78%, rgba(155,89,208,.32), transparent 70%),
+                linear-gradient(180deg, #04030c, #150e35); }
+  .theme-god::before { background:
+    radial-gradient(circle, rgba(255,255,255,.95) 0 1px, transparent 1.6px) 0 0 / 53px 47px,
+    radial-gradient(circle, rgba(255,255,255,.6) 0 1px, transparent 1.6px) 20px 30px / 97px 83px,
+    radial-gradient(circle, rgba(238,243,255,.9) 0 1.6px, transparent 2.2px) 40px 10px / 151px 137px;
+    animation: twinkle 3s ease-in-out infinite alternate; }
+  @keyframes twinkle { from { opacity: .55; } to { opacity: 1; } }
+  .theme-god::after { background:
+    radial-gradient(circle at calc(12% + 14px) calc(20% - 10px), #150e35 0 34px, transparent 35px),
+    radial-gradient(circle at 12% 20%, #eef3ff 0 36px, rgba(238,243,255,.15) 37px 52px, transparent 53px); }
+  @media (prefers-reduced-motion: reduce) { .theme-chad::before, .theme-god::before, .node.next::before, .you { animation: none; } }
 </style>
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
@@ -254,7 +375,7 @@
 <div id="controls" class="hud card">
   <div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> <b>Move</b> &nbsp; Mouse <b>Look</b></div>
   <div><kbd>Space</kbd> Hold to <b>charge</b>, release to <b>backflip</b></div>
-  <div><kbd>R</kbd> Restart &nbsp; <kbd>Esc</kbd> Pause &nbsp; <kbd>Shift</kbd> Free mouse</div>
+  <div><kbd>Esc</kbd> Pause &nbsp; <kbd>Shift</kbd> Free mouse</div>
   <div class="tip" id="tip"></div>
 </div>
 <div id="lookhint" class="hud pill hidden">Mouse free. Press Shift or click to recapture.</div>
@@ -267,9 +388,29 @@
 <div id="msg"></div>
 <div id="toast" class="hidden"></div>
 
+<div class="cineBar" id="barTop"></div><div class="cineBar" id="barBot"></div>
+<div id="skipHint">Enter: skip</div>
+<div id="fade"></div>
+
 <!-- ================= MAIN MENU ================= -->
 <div id="mainMenu" class="screen">
   <div>
+    <svg class="logo" id="logo" viewBox="0 0 200 200" role="img" aria-label="Backflipping Billy logo">
+      <defs><linearGradient id="bbSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3c7be0"/><stop offset="1" stop-color="#8fd0f5"/></linearGradient></defs>
+      <circle cx="100" cy="100" r="94" fill="#1b2240" stroke="#f6c945" stroke-width="8"/>
+      <circle cx="100" cy="100" r="80" fill="url(#bbSky)"/>
+      <path d="M46 124 A58 58 0 1 1 150 128" fill="none" stroke="#e2574c" stroke-width="12" stroke-linecap="round"/>
+      <polygon points="148.9,139 165.3,128 142.7,119" fill="#e2574c" stroke="#e2574c" stroke-width="3" stroke-linejoin="round"/>
+      <g stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".85"><path d="M40 150l16-5"/><path d="M48 163l14-7"/><path d="M62 173l11-8"/></g>
+      <g transform="rotate(-25 100 114)">
+        <circle cx="100" cy="116" r="32" fill="#f2c29b" stroke="#11162b" stroke-width="4"/>
+        <path d="M68 112 A32 32 0 0 1 132 112 Z" fill="#3c7be0" stroke="#11162b" stroke-width="4" stroke-linejoin="round"/>
+        <rect x="120" y="106" width="30" height="9" rx="4.5" fill="#24509e" stroke="#11162b" stroke-width="3.5"/>
+        <circle cx="94" cy="123" r="3.8" fill="#11162b"/><circle cx="111" cy="123" r="3.8" fill="#11162b"/>
+        <path d="M92 132 Q102 146 113 131 Z" fill="#9c2f27" stroke="#11162b" stroke-width="3.5" stroke-linejoin="round"/>
+      </g>
+      <path d="M156 58l3 8 8 3-8 3-3 8-3-8-8-3 8-3z" fill="#f6c945"/>
+    </svg>
     <h1 class="title" id="title"><span class="word">Backflipping</span><span class="word">Billy</span></h1>
   </div>
   <div class="menuStack">
@@ -285,7 +426,7 @@
   <div class="panelHead">
     <div class="eyebrow">Choose your difficulty</div>
     <h2>Select a mode</h2>
-    <p class="muted">Locked in for the whole run. Choose wisely.</p>
+    <p class="muted">Each mode has its own level map and its own progress.</p>
   </div>
   <div class="modes">
     <button class="modeCard m-baby" data-mode="baby">
@@ -300,16 +441,28 @@
     </button>
     <button class="modeCard m-chad" data-mode="chad">
       <span class="tier">Tier III</span><span class="mname">Chad Pro Elite Gamer</span>
-      <span class="mdesc">No shift lock, and the controls are inverted.</span>
+      <span class="mdesc">No shift lock. Billy drank the milk under the sink, so his controls are inverted.</span>
       <span class="beaten"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Beaten</span>
     </button>
     <button class="modeCard m-god" data-mode="god">
       <span class="tier">Tier Infinity</span><span class="mname">Chad Elite God Level Pro Maxxing Gamer</span>
-      <span class="mdesc">No mouse. Camera stuck behind Billy. He drank the milk under the sink, so he's confused: controls inverted.</span>
+      <span class="mdesc">No mouse. Camera stuck behind Billy. He went back for MORE sink milk, so he's still confused: controls inverted.</span>
       <span class="beaten"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Beaten</span>
     </button>
   </div>
   <button class="btn ghost" data-go="mainMenu">Back</button>
+</div>
+
+<!-- ================= LEVEL MAP ================= -->
+<div id="levelMenu" class="screen hidden">
+  <div class="panelHead">
+    <div class="eyebrow" id="mapTier"></div>
+    <h2 id="mapTitle"></h2>
+    <p class="muted" id="mapSub"></p>
+  </div>
+  <div class="mapScroll"><div class="map" id="map"></div></div>
+  <p class="mapHint">Beat a level to unlock the next one. Beat all of them for the balloon.</p>
+  <button class="btn ghost" data-go="modeMenu">Change mode</button>
 </div>
 
 <!-- ================= ACHIEVEMENTS ================= -->
@@ -337,7 +490,7 @@
     <ul>
       <li><b>WASD</b> to walk, <b>mouse</b> to look around.</li>
       <li><b>Hold Space</b> to charge, <b>release</b> to backflip. The power bar goes up and back down, forever.</li>
-      <li><b>R</b> restarts the level, <b>Esc</b> pauses, <b>Shift</b> frees or recaptures the mouse.</li>
+      <li><b>Esc</b> pauses, <b>Shift</b> frees or recaptures the mouse.</li>
     </ul>
     <div class="sep"></div>
     <h3>Rules</h3>
@@ -390,9 +543,17 @@
   <div class="stack">
     <button class="btn primary big" id="btnResume">Resume</button>
     <button class="btn" id="btnRestartLvl">Restart level</button>
+    <button class="btn" id="btnMapPause">Level map</button>
     <button class="btn" id="btnSettingsPause">Settings</button>
     <button class="btn ghost" id="btnQuit">Main menu</button>
   </div>
+</div>
+
+<!-- ================= THE END ================= -->
+<div id="theEnd" class="screen hidden">
+  <div class="endTitle">THE END</div>
+  <div class="endBy">made by an asshole</div>
+  <button class="btn primary" id="btnEndContinue">Continue</button>
 </div>
 
 <!-- ================= END ================= -->
@@ -401,9 +562,9 @@
   <div class="panelHead"><div class="eyebrow gold">You actually did it</div><h2>Grand Prize</h2><p class="muted" id="endMode"></p></div>
   <div id="endUnlock" class="unlock hidden"></div>
   <table class="endTable" id="endTable"></table>
-  <p class="muted">Your prize: Billy's balloon. He floated away with it. Worth every death.</p>
+  <p class="muted">Your prize: a golden chest with Billy's balloon inside. He floated away with it. Worth every death.</p>
   <div class="row-btns">
-    <button class="btn primary" data-go="modeMenu">Play again</button>
+    <button class="btn primary" data-go="levelMenu">Level map</button>
     <button class="btn" data-go="achMenu">Achievements</button>
     <button class="btn ghost" data-go="mainMenu">Main menu</button>
   </div>
@@ -449,6 +610,7 @@ const HX = 0.3, HY = 0.86; // player hitbox half extents (x/z, y)
 // bars:  spinning sweepers { x, z, top (floor y), len (half length), speed (rad/s), arms: 1 | 2,
 //        y: height above floor (default 0.45 = flip over it; ~2 = high bar, walk under, don't flip into it) }
 // winds: gust zones { x, z, w, d, fx, fz (m/s^2), period (s) } - push Billy while airborne
+// checkpoint: { x, z, top } (optional) - stand on it and deaths respawn you there
 const LEVELS = [
   {
     name: 'Normal Jumping',
@@ -531,14 +693,15 @@ const LEVELS = [
   {
     name: 'Conveyor Belts',
     spawn: { x: 0, z: 2.5, top: 0 },
-    finish: { x: 0, z: -50, top: 1.6 },
+    finish: { x: 0, z: -56, top: 1.6 },
     platforms: [
       { x: 0, z: 0,   w: 6, d: 8, top: 0 },
-      { x: 0, z: -11, w: 5, d: 6, top: 0,   conveyor: { axis: 'x', speed: 2 } },    // drags you sideways
-      { x: 0, z: -20, w: 3, d: 6, top: 0.4, conveyor: { axis: 'z', speed: 3 } },    // drags you back
-      { x: 0, z: -30, w: 3, d: 6, top: 0.8, conveyor: { axis: 'z', speed: -3 } },   // drags you off the front
-      { x: 0, z: -40, w: 5, d: 4, top: 1.2, conveyor: { axis: 'x', speed: -3 } },
-      { x: 0, z: -50, w: 6, d: 6, top: 1.6 },
+      { x: 0, z: -11, w: 5, d: 6, top: 0,   conveyor: { axis: 'x', speed: 2 } },    // drags you right
+      { x: 0, z: -20, w: 5, d: 5, top: 0.4, conveyor: { axis: 'x', speed: -2.5 } }, // drags you left
+      { x: 0, z: -29, w: 5, d: 5, top: 0.8, conveyor: { axis: 'x', speed: 3 } },    // right, faster
+      { x: 0, z: -38, w: 3, d: 6, top: 1.0, conveyor: { axis: 'z', speed: -3 } },   // drags you off the front
+      { x: 0, z: -47, w: 5, d: 4, top: 1.3, conveyor: { axis: 'x', speed: -3 } },   // left, small
+      { x: 0, z: -56, w: 6, d: 6, top: 1.6 },
     ],
     spikes: [],
   },
@@ -550,10 +713,10 @@ const LEVELS = [
       { x: 0, z: 0,   w: 6,   d: 8,   top: 0 },
       { x: 0, z: -10, w: 3,   d: 3,   top: 0,   h: 0.4, blink: { period: 3,   on: 0.6,  phase: 0 } },
       { x: 0, z: -17, w: 3,   d: 3,   top: 0.3, h: 0.4, blink: { period: 3,   on: 0.6,  phase: 0.5 } },
-      { x: 0, z: -24, w: 3,   d: 3,   top: 0.6, h: 0.4, blink: { period: 2.4, on: 0.55, phase: 0 } },
+      { x: 0, z: -24, w: 3,   d: 3,   top: 0.6, h: 0.4, blink: { period: 2.4, on: 0.72, phase: 0 } },   // stays ~1.7s
       { x: 3, z: -30, w: 2.5, d: 2.5, top: 0.9, h: 0.4, blink: { period: 2.4, on: 0.55, phase: 0.5 } },
       { x: 3, z: -37, w: 3,   d: 3,   top: 0.9 },                                                     // breather
-      { x: 0, z: -43, w: 2.5, d: 2.5, top: 1.2, h: 0.4, blink: { period: 2,   on: 0.5,  phase: 0.25 } },
+      { x: 0, z: -43, w: 2.5, d: 2.5, top: 1.2, h: 0.4, blink: { period: 2,   on: 0.6,  phase: 0.25 } },
       { x: 0, z: -50, w: 6,   d: 6,   top: 1.5 },
     ],
     spikes: [],
@@ -603,7 +766,8 @@ const LEVELS = [
   {
     name: 'Final Gauntlet',
     spawn: { x: 0, z: 2.5, top: 0 },
-    finish: { x: 0, z: -76, top: 1.9 },
+    checkpoint: { x: 0, z: -75, top: 1.9 },   // halfway flag
+    finish: { x: 0, z: -151.5, top: 3.9 },    // the golden chest
     platforms: [
       { x: 0, z: 0,      w: 6,   d: 8,   top: 0 },
       { x: 0, z: -11,    w: 4,   d: 6,   top: 0,   ice: true },
@@ -613,16 +777,27 @@ const LEVELS = [
       { x: 0, z: -41,    w: 2.5, d: 2.5, top: 1.0, h: 0.4, blink: { period: 2.4, on: 0.55, phase: 0 } },
       { x: 0, z: -51.25, w: 5,   d: 9.5, top: 1.4, conveyor: { axis: 'x', speed: 2.5 } },
       { x: 0, z: -63,    w: 5,   d: 8,   top: 1.4 },
-      { x: 0, z: -75,    w: 6,   d: 6,   top: 1.9 },
+      { x: 0, z: -75,    w: 6,   d: 6,   top: 1.9 },                                              // checkpoint
+      // ----- second half -----
+      { x: 0, z: -86,    w: 3,   d: 6,   top: 2.2, ice: true },
+      { x: 0, z: -95.5,  w: 2.5, d: 2.5, top: 2.5, h: 0.4, blink: { period: 2.6, on: 0.6, phase: 0.3 } },
+      { x: 0, z: -103,   w: 2.5, d: 2.5, top: 2.8, crumble: true },
+      { x: 0, z: -112,   w: 5,   d: 6,   top: 3.0, conveyor: { axis: 'x', speed: -3 } },
+      { x: 0, z: -121,   w: 2.5, d: 2.5, top: 3.0, h: 0.4, move: { axis: 'x', range: 2.5, speed: 1.4, phase: 1 } },
+      { x: 0, z: -130,   w: 5,   d: 8,   top: 3.3 },
+      { x: 0, z: -140.5, w: 2.5, d: 2.5, top: 3.6, crumble: true },
+      { x: 0, z: -150,   w: 7,   d: 7,   top: 3.9 },                                              // the chest
     ],
     spikes: [
       { x: 0, z: -27, w: 5, d: 2.5, top: 0.6 },
     ],
     bars: [
-      { x: 0, z: -63, top: 1.4, len: 2.3, speed: 2, arms: 1 },
+      { x: 0, z: -63,  top: 1.4, len: 2.3, speed: 2,    arms: 1 },
+      { x: 0, z: -130, top: 3.3, len: 2.3, speed: -2.2, arms: 2 },
     ],
     winds: [
       { x: 0, z: -69.5, w: 40, d: 5, fx: -13, fz: 0, period: 2 },
+      { x: 0, z: -137,  w: 40, d: 4, fx: 13,  fz: 0, period: 1.8 },
     ],
   },
 ];
@@ -707,6 +882,10 @@ try { // migrate older best-run records (those only existed for beaten modes)
 function saveProgress() {
   try { localStorage.setItem('bb_progress', JSON.stringify(progress)); localStorage.removeItem('bb_best2'); } catch (e) {}
 }
+// levelProg[modeKey][i] = { best } once level i is cleared in that mode (null = not yet)
+let levelProg = {};
+try { levelProg = JSON.parse(localStorage.getItem('bb_levels') || '{}') || {}; } catch (e) {}
+function saveLevels() { try { localStorage.setItem('bb_levels', JSON.stringify(levelProg)); } catch (e) {} }
 
 // ---------- Game modes ----------
 //  shiftLock: Billy faces the camera direction (Roblox shift lock)
@@ -721,16 +900,17 @@ const MODES = {
           tip: 'Shift lock: Billy faces where you look, so flips go toward the camera.',
           achTitle: 'Shift Happens', achDesc: 'Beat every level in Pro Elite Gamer mode.',
           end: 'Beaten as a Pro Elite Gamer. Respectable.' },
-  chad: { name: 'Chad Pro Elite Gamer', tier: 'Tier III', badge: 'Chad Pro Elite Gamer · Inverted', shiftLock: false, invert: true, tank: false,
-          tip: 'Controls inverted: W is S, A is D. Good luck.',
+  chad: { name: 'Chad Pro Elite Gamer', tier: 'Tier III', badge: 'Chad Pro Elite Gamer · Milk-confused', shiftLock: false, invert: true, tank: false,
+          tip: 'Billy drank the milk under the sink. Controls inverted: W is S, A is D. Good luck.',
           achTitle: 'Upside Down Brain', achDesc: 'Beat every level in Chad Pro Elite Gamer mode.',
-          end: 'Beaten as a Chad Pro Elite Gamer. Your brain is permanently upside down.' },
+          end: 'Beaten as a Chad Pro Elite Gamer. The sink milk is wearing off. Your brain is permanently upside down.' },
   god:  { name: 'Chad Elite God Level Pro Maxxing Gamer', tier: 'Tier Infinity', badge: 'God Level Maxxing · Milk-confused', shiftLock: false, invert: true, tank: true,
           tip: 'No mouse. A/D turn Billy, W/S walk, all inverted (milk). Camera is stuck behind him.',
           achTitle: 'Lactose Legend', achDesc: 'Beat every level in Chad Elite God Level Pro Maxxing Gamer mode.',
           end: 'Beaten as a CHAD ELITE GOD LEVEL PRO MAXXING GAMER. Billy has finally digested the milk. Absolute legend.' },
 };
 const TANK_TURN = 2.6; // rad/s in god mode
+const THEMES = { baby: 'Bouncy Meadow', pro: 'Sunscorch Dunes', chad: 'Molten Peaks', god: 'The Milky Void' };
 
 // ---------- Renderer / scene ----------
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -809,6 +989,41 @@ const portal = new THREE.Group();
   portal.add(ring, inner);
 }
 scene.add(balloon, portal);
+
+// The grand prize chest (last level): golden, glowing, balloon inside.
+const chest = new THREE.Group();
+const chestGold = new THREE.MeshStandardMaterial({ color: 0xf2b630, metalness: 0.85, roughness: 0.28, emissive: 0x7a4f00,
+  emissiveIntensity: 0.5, side: THREE.DoubleSide });
+const chestTrim = new THREE.MeshStandardMaterial({ color: 0x9c6a12, metalness: 0.9, roughness: 0.35, emissive: 0x3a2500, emissiveIntensity: 0.4 });
+const chestLid = new THREE.Group();
+const chestLight = new THREE.PointLight(0xffc94a, 1.5, 9, 2);
+const chestBeam = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.5, 3, 24, 1, true),
+  new THREE.MeshBasicMaterial({ color: 0xffd76a, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+{
+  const W = 1.24, H = 0.7, D = 0.8;
+  const base = new THREE.Mesh(new THREE.BoxGeometry(W, H, D), chestGold); base.position.y = H / 2;
+  const inner = new THREE.Mesh(new THREE.PlaneGeometry(W - 0.1, D - 0.1), new THREE.MeshBasicMaterial({ color: 0xfff1b0 }));
+  inner.rotation.x = -Math.PI / 2; inner.position.y = H + 0.003;
+  chest.add(base, inner);
+  for (const sx of [-0.45, 0.45]) {
+    const band = new THREE.Mesh(new THREE.BoxGeometry(0.1, H + 0.02, D + 0.02), chestTrim); band.position.set(sx, H / 2, 0); chest.add(band);
+  }
+  const rim = new THREE.Mesh(new THREE.BoxGeometry(W + 0.02, 0.08, D + 0.02), chestTrim); rim.position.y = 0.04; chest.add(rim);
+  const lock = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.24, 0.06), chestTrim); lock.position.set(0, H - 0.08, D / 2 + 0.03); chest.add(lock);
+  // lid: a half cylinder hinged along the back top edge (front faces +z, toward the player)
+  chestLid.position.set(0, H, -D / 2);
+  const shell = new THREE.Mesh(new THREE.CylinderGeometry(D / 2, D / 2, W, 24, 1, false, 0, Math.PI), chestGold);
+  shell.rotation.z = Math.PI / 2; shell.position.z = D / 2; chestLid.add(shell);
+  for (const sx of [-0.45, 0.45]) {
+    const bnd = new THREE.Mesh(new THREE.CylinderGeometry(D / 2 + 0.012, D / 2 + 0.012, 0.1, 24, 1, false, 0, Math.PI), chestTrim);
+    bnd.rotation.z = Math.PI / 2; bnd.position.set(sx, 0, D / 2); chestLid.add(bnd);
+  }
+  chest.add(chestLid);
+  chestLight.position.set(0, 1.0, 0.3); chest.add(chestLight);
+  chestBeam.position.y = H + 1.5; chest.add(chestBeam);
+  chest.traverse(m => { if (m.isMesh && m !== chestBeam && m !== inner) { m.castShadow = true; m.receiveShadow = true; } });
+}
+scene.add(chest);
 
 // ---------- Billy ----------
 const mats = {
@@ -1043,13 +1258,16 @@ const spikeMat = new THREE.MeshStandardMaterial({ color: 0xc9ced6, metalness: 0.
 const spikeGeo = new THREE.ConeGeometry(0.17, 0.55, 6);
 let levelGroup = new THREE.Group(); scene.add(levelGroup);
 let platforms = [], spikes = [], bars = [], winds = [], finish = null, levelIndex = 0;
+let cpReached = false, cpFlag = null; // halfway checkpoint (Final Gauntlet)
 // special surface looks (top colour, side colour)
 const SURFACE = {
   ice:     [0xbfe8ff, 0x7fb6d9],
   crumble: [0xd2a86a, 0x8a6a40],
   move:    [0xd98a3a, 0x9c6229],
 };
-// procedural textures so special surfaces read at a glance
+// procedural textures so special surfaces read at a glance.
+// Every block draws its own canvas: sharing one texture between blocks broke
+// rendering after a level was unloaded (disposing one copy freed the shared image).
 function canvasTex(draw) {
   const c = document.createElement('canvas'); c.width = c.height = 256;
   draw(c.getContext('2d'), 256);
@@ -1079,7 +1297,7 @@ function chevrons(g, S, vertical) {
   }
 }
 const TEX = {
-  crumble: canvasTex((g, S) => {
+  crumble: (g, S) => {
     g.fillStyle = '#c99556'; g.fillRect(0, 0, S, S);
     for (let i = 0; i < 260; i++) { // grit
       g.fillStyle = Math.random() < 0.5 ? 'rgba(90,55,25,0.35)' : 'rgba(255,230,180,0.3)';
@@ -1088,8 +1306,8 @@ const TEX = {
     g.strokeStyle = '#3d2410'; g.lineCap = 'round'; g.lineJoin = 'round';
     for (let i = 0; i < 5; i++) crack(g, Math.random() * S, Math.random() * S, 120 + Math.random() * 80, Math.random() * 6.3, 4);
     g.strokeStyle = 'rgba(61,36,16,0.8)'; g.lineWidth = 3; g.strokeRect(1.5, 1.5, S - 3, S - 3); // chunk edges
-  }),
-  ice: canvasTex((g, S) => {
+  },
+  ice: (g, S) => {
     const gr = g.createLinearGradient(0, 0, S, S);
     gr.addColorStop(0, '#d9f4ff'); gr.addColorStop(0.5, '#a7dcf7'); gr.addColorStop(1, '#d1efff');
     g.fillStyle = gr; g.fillRect(0, 0, S, S);
@@ -1102,12 +1320,12 @@ const TEX = {
     for (let i = 0; i < 4; i++) crack(g, Math.random() * S, Math.random() * S, 90, Math.random() * 6.3, 1.2);
     g.fillStyle = 'rgba(255,255,255,0.9)';
     for (let i = 0; i < 70; i++) g.fillRect(Math.random() * S, Math.random() * S, 2, 2); // frost sparkles
-  }),
-  convX: canvasTex((g, S) => chevrons(g, S, false)),
-  convZ: canvasTex((g, S) => chevrons(g, S, true)),
+  },
+  convX: (g, S) => chevrons(g, S, false),
+  convZ: (g, S) => chevrons(g, S, true),
 };
 function surfaceMap(kind, rx, ry) {
-  const t = TEX[kind].clone(); t.repeat.set(Math.max(1, rx / 2.5), Math.max(1, ry / 2.5)); t.needsUpdate = true;
+  const t = canvasTex(TEX[kind]); t.repeat.set(Math.max(1, rx / 2.5), Math.max(1, ry / 2.5));
   return t;
 }
 const barMat = new THREE.MeshStandardMaterial({ color: 0xe2574c, roughness: 0.4 });
@@ -1216,7 +1434,38 @@ function buildLevel(L) {
 
   finish = L.finish;
   const last = levelIndex === LEVELS.length - 1;
-  balloon.visible = last; portal.visible = !last;
+  portal.visible = !last; chest.visible = last;
+  resetChest();
+  if (last) chest.position.set(finish.x, finish.top, finish.z);
+  // checkpoint flag: yellow until touched, then green
+  cpReached = false; cpFlag = null;
+  if (L.checkpoint) {
+    const cp = L.checkpoint, g = new THREE.Group();
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 2.4, 8), new THREE.MeshStandardMaterial({ color: 0xeef3ff }));
+    pole.position.y = 1.2;
+    cpFlag = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.55, 0.04),
+      new THREE.MeshStandardMaterial({ color: 0xf6c945, emissive: 0x5a4300, emissiveIntensity: 0.6 }));
+    cpFlag.geometry.translate(0.45, 0, 0); cpFlag.position.set(0.03, 2.1, 0);
+    g.add(pole, cpFlag); g.position.set(cp.x + 2.4, cp.top, cp.z);
+    g.traverse(m => { if (m.isMesh) m.castShadow = true; });
+    levelGroup.add(g);
+  }
+}
+
+function resetChest() {
+  chestLid.rotation.x = 0; chestLight.intensity = 1.5; chestBeam.material.opacity = 0;
+  balloon.visible = false; balloon.scale.setScalar(1); balloonWeight.visible = false;
+  mats.skin.emissive.setRGB(0, 0, 0);
+  document.body.classList.remove('cine', 'fading');
+}
+function reachCheckpoint() {
+  const cp = LEVELS[levelIndex].checkpoint;
+  cpReached = true;
+  if (cpFlag) { cpFlag.material.color.set(0x41d98a); cpFlag.material.emissive.set(0x0b4a2a); }
+  burst(30, cp.x + 2.4, cp.top + 2, cp.z, 6, 0x41d98a);
+  [659, 880, 1175].forEach((f, i) => setTimeout(() => beep(f, 0.18, 'triangle', 0.08), i * 90));
+  $banner.innerHTML = `<div class="num">Checkpoint</div><div class="name">Halfway there</div>`;
+  $banner.style.opacity = 1; bannerT = 2;
 }
 
 // put every crumbled block back (on respawn)
@@ -1236,8 +1485,8 @@ let modeKey = 'baby', M = MODES.baby; // chosen on the mode screen, locked for t
 let state = 'menu';        // menu | playing | paused | levelDone | finished
 addEventListener('keydown', e => {
   if (e.code === 'Space') e.preventDefault();
-  if (e.code === 'KeyR' && !e.repeat && state === 'playing') respawn();
   if (e.code === 'Enter' && state === 'levelDone') doneT = 0;
+  if ((e.code === 'Enter' || e.code === 'Escape') && !e.repeat && state === 'cutscene') { toCredits(); return; }
   if ((e.code === 'ShiftLeft' || e.code === 'ShiftRight') && !e.repeat && (state === 'playing' || state === 'levelDone')) {
     // Shift = free / recapture the mouse (Esc is pause)
     if (isLocked()) { freeingMouse = true; document.exitPointerLock?.(); } else lockMouse();
@@ -1247,6 +1496,7 @@ addEventListener('keydown', e => {
     else if (state === 'paused') {
       if (!$('settingsMenu').classList.contains('hidden')) closeSettings(); else resume();
     } else if (!$('settingsMenu').classList.contains('hidden')) closeSettings();
+    else if (!$('levelMenu').classList.contains('hidden')) { click(); show('modeMenu'); }
   }
   keys[e.code] = true;
 });
@@ -1282,9 +1532,10 @@ addEventListener('mousemove', e => {
 // ---------- UI / screens ----------
 const $ = id => document.getElementById(id);
 const $deaths = $('deaths'), $time = $('time'), $msg = $('msg'), $banner = $('banner'), $lookhint = $('lookhint');
-const SCREENS = ['mainMenu', 'modeMenu', 'achMenu', 'howMenu', 'settingsMenu', 'pauseMenu', 'end'];
+const SCREENS = ['mainMenu', 'modeMenu', 'levelMenu', 'achMenu', 'howMenu', 'settingsMenu', 'pauseMenu', 'theEnd', 'end'];
 function show(id) {
   if (id === 'achMenu') renderAchievements();
+  if (id === 'levelMenu') renderLevelMap();
   if (id === 'modeMenu') renderModeCards();
   for (const s of SCREENS) $(s).classList.toggle('hidden', s !== id);
   document.body.classList.toggle('inmenu', state === 'menu');
@@ -1309,7 +1560,8 @@ function renderAchievements() {
     const m = MODES[k], p = progress[k];
     const meta = p
       ? `<span class="state">Unlocked</span><br>${p.beatenAt ? new Date(p.beatenAt).toLocaleDateString() + '<br>' : ''}` +
-        `Best: ${p.bestDeaths} deaths · ${fmt(p.bestTime)}${p.clears > 1 ? `<br>Cleared ${p.clears} times` : ''}`
+        (p.bestDeaths != null ? `Best full run: ${p.bestDeaths} deaths · ${fmt(p.bestTime)}` : '') +
+        `${p.clears > 1 ? `<br>Cleared ${p.clears} times` : ''}`
       : `<span class="state">Locked</span><br>${m.tier}`;
     return `<div class="ach m-${k}${p ? ' done' : ''}">
       <div class="badge">${p ? ICON.check : ICON.lock}</div>
@@ -1357,7 +1609,7 @@ function flip(el, big = false, silent = false) {
   if (!silent) whoop(big);
 }
 const visibleScreen = () => SCREENS.map($).find(s => !s.classList.contains('hidden'));
-const flippables = scr => [...scr.querySelectorAll('.btn, .modeCard, .ach, .panelHead, .sheet')];
+const flippables = scr => [...scr.querySelectorAll('.btn, .modeCard, .ach, .panelHead, .sheet, .node:not(:disabled)')];
 
 // split the title into letters so they can flip one after another
 for (const w of document.querySelectorAll('#title .word')) {
@@ -1387,15 +1639,78 @@ scheduleFlip(() => {
 
 // hover betrayal (20%) and a flip on every click; the click action itself still happens instantly
 document.addEventListener('mouseover', e => {
-  const el = e.target.closest('.btn, .modeCard');
+  const el = e.target.closest('.btn, .modeCard, .node:not(:disabled)');
   if (el && !el.contains(e.relatedTarget) && Math.random() < 0.2) flip(el);
 });
 document.addEventListener('click', e => { const el = e.target.closest('.btn, .modeCard'); if (el) flip(el, false, true); });
 
+// ---------- Level map ----------
+function modeLevels(k) {
+  const a = levelProg[k] || (levelProg[k] = []);
+  // anyone who beat the mode before the map existed gets every level
+  if (progress[k] && !a.some(Boolean)) for (let i = 0; i < LEVELS.length; i++) a[i] = { best: null };
+  return a;
+}
+const levelUnlocked = (k, i) => i === 0 || !!modeLevels(k)[i - 1] || !!modeLevels(k)[i];
+const MAP_PTS = LEVELS.map((_, i) => [70 + i * 860 / (LEVELS.length - 1), 190 + 95 * Math.sin(i * 1.15 + 0.3)]);
+function trailPath(pts) {
+  if (pts.length < 2) return '';
+  let d = `M${pts[0][0]},${pts[0][1]}`;
+  for (let i = 0; i < pts.length - 1; i++) { // Catmull-Rom -> cubic bezier for a smooth road
+    const p0 = pts[i - 1] || pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] || p2;
+    const c1 = [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6];
+    const c2 = [p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6];
+    d += ` C${c1.join(',')} ${c2.join(',')} ${p2.join(',')}`;
+  }
+  return d;
+}
+function renderLevelMap() {
+  const k = modeKey, prog = modeLevels(k), n = LEVELS.length;
+  const cleared = prog.filter(Boolean).length;
+  const next = LEVELS.findIndex((_, i) => !prog[i]); // first unbeaten level (-1 = all done)
+  $('levelMenu').className = 'screen theme-' + k;
+  $('mapTier').textContent = `${M.tier} · ${THEMES[k]}`;
+  $('mapTitle').textContent = M.name;
+  $('mapSub').textContent = cleared === n ? `All ${n} levels cleared. Billy has his balloon.` : `${cleared} / ${n} levels cleared`;
+  const reach = next === -1 ? n - 1 : next;
+  let html = `<svg viewBox="0 0 1000 380" aria-hidden="true">
+    <path class="t-shadow" d="${trailPath(MAP_PTS)}"/><path class="t-base" d="${trailPath(MAP_PTS)}"/>
+    <path class="t-done" d="${trailPath(MAP_PTS.slice(0, reach + 1))}"/></svg>`;
+  LEVELS.forEach((L, i) => {
+    const [x, y] = MAP_PTS[i], open = levelUnlocked(k, i), done = !!prog[i];
+    const side = y < 190 ? 'up' : 'down';
+    const best = done && prog[i].best != null ? `<small>Best: ${prog[i].best} death${prog[i].best === 1 ? '' : 's'}</small>`
+               : !open ? '<small>Locked</small>' : '';
+    html += `<div class="stop ${side}${i === n - 1 ? ' final' : ''}" style="left:${x / 10}%;top:${y / 3.8}%">
+      <button class="node${done ? ' cleared' : ''}${i === next ? ' next' : ''}" data-lvl="${i}" ${open ? '' : 'disabled'}
+        aria-label="Level ${i + 1}: ${L.name}${done ? ', cleared' : open ? '' : ', locked'}">
+        ${open ? i + 1 : ICON.lock}${done ? `<span class="tick">${ICON.check}</span>` : ''}</button>
+      <div class="nlab">${i + 1}. ${L.name}${best}</div>
+      ${i === next ? '<div class="you">BILLY</div>' : ''}</div>`;
+  });
+  $('map').innerHTML = html;
+  // on narrow screens, scroll the map so Billy's spot is in view
+  requestAnimationFrame(() => {
+    const sc = $('map').parentElement;
+    sc.scrollLeft = MAP_PTS[reach][0] / 1000 * $('map').offsetWidth - sc.clientWidth / 2;
+  });
+}
+$('map').addEventListener('click', e => {
+  const b = e.target.closest('.node');
+  if (b && !b.disabled) startRun(modeKey, +b.dataset.lvl);
+});
+function goLevelMap() {
+  state = 'menu';
+  document.exitPointerLock?.();
+  levelIndex = 0; buildLevel(LEVELS[0]); respawn();
+  $msg.textContent = ''; $banner.style.opacity = 0;
+  show('levelMenu');
+}
+
 function click() { beep(660, 0.05, 'square', 0.05); }
 document.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => {
   click();
-  if (b.dataset.go === 'mainMenu') goMainMenu(); else show(b.dataset.go);
+  if (b.dataset.go === 'mainMenu') goMainMenu(); else if (b.dataset.go === 'levelMenu') goLevelMap(); else show(b.dataset.go);
 }));
 
 function goMainMenu() {
@@ -1459,10 +1774,25 @@ function resume() {
 $('btnResume').addEventListener('click', resume);
 $('btnRestartLvl').addEventListener('click', () => { respawn(); resume(); });
 $('btnQuit').addEventListener('click', () => { click(); goMainMenu(); });
+$('btnMapPause').addEventListener('click', () => { click(); goLevelMap(); });
+$('btnEndContinue').addEventListener('click', () => {
+  click(); show('end');
+  if (pendingAch) {
+    pendingAch = false;
+    setTimeout(() => {
+      toast('Achievement unlocked', M.achTitle);
+      [784, 988, 1175, 1568].forEach((f, i) => setTimeout(() => beep(f, 0.18, 'square', 0.06), i * 90));
+    }, 500);
+  }
+});
+$('logo').addEventListener('click', () => flip($('logo'), true));
 
 // run start
-document.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => startRun(b.dataset.mode)));
-function startRun(key) {
+document.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => {
+  modeKey = b.dataset.mode; M = MODES[modeKey]; click(); show('levelMenu');
+}));
+let devRun = false; // ?level= shortcut: never saves progress
+function startRun(key, start = 0) {
   modeKey = key; M = MODES[key]; click();
   const badge = $('mode');
   badge.className = 'hud pill mode ' + key;
@@ -1470,7 +1800,7 @@ function startRun(key) {
   $('tip').textContent = M.tip;
   $('lvlcount').textContent = LEVELS.length;
   deaths = 0; runTime = 0; levelDeaths = []; levelsCleared = 0;
-  loadLevel(0);
+  loadLevel(start);
   show(null);
   lockMouse();
 }
@@ -1482,7 +1812,8 @@ function loadLevel(i) {
   levelDeaths[i] = 0; levelTime = 0;
   buildLevel(L);
   $('lvl').textContent = i + 1; $('lvlname').textContent = L.name;
-  $('pips').innerHTML = LEVELS.map((_, j) => `<i class="${j < i ? 'done' : j === i ? 'cur' : ''}"></i>`).join('');
+  const prog = modeLevels(modeKey);
+  $('pips').innerHTML = LEVELS.map((_, j) => `<i class="${j === i ? 'cur' : prog[j] ? 'done' : ''}"></i>`).join('');
   $banner.innerHTML = `<div class="num">Level ${i + 1}</div><div class="name">${L.name}</div>`;
   $banner.style.opacity = 1; bannerT = 2.2;
   state = 'playing';
@@ -1495,7 +1826,7 @@ let deaths = 0, runTime = 0, levelTime = 0, levelDeaths = [], shake = 0, time = 
 const camTarget = new THREE.Vector3();
 
 function respawn() {
-  const s = LEVELS[levelIndex].spawn;
+  const L = LEVELS[levelIndex], s = (cpReached && L.checkpoint) || L.spawn;
   Object.assign(billy, { x: s.x, y: s.top + HY, z: s.z, vx: 0, vy: 0, vz: 0,
     yaw: 0, angle: 0, flipping: false, dead: false, grounded: false, ground: null,
     charging: false, power: 0, floating: false });
@@ -1523,6 +1854,11 @@ function reachFinish() {
   billy.vx = billy.vz = 0; billy.flipping = false; billy.angle = 0;
   billy.charging = false; humStop();
   levelsCleared++;
+  if (!devRun) { // save this level's clear + best deaths for the map
+    const prog = modeLevels(modeKey), prev = prog[levelIndex], n = levelDeaths[levelIndex];
+    prog[levelIndex] = { best: prev && prev.best != null ? Math.min(prev.best, n) : n };
+    saveLevels();
+  }
   if (last) { finishRun(); return; }
   state = 'levelDone'; doneT = 2.5;
   const n = levelDeaths[levelIndex];
@@ -1532,39 +1868,136 @@ function reachFinish() {
 }
 
 function finishRun() {
-  state = 'finished';
-  billy.floating = true; billy.yaw = camYaw + Math.PI; // face the camera, grab the balloon, float away
-  $msg.innerHTML = `Billy got his balloon!<br><span class="sub ok">Up, up and away</span>`;
-  [523, 659, 784, 1047, 1319].forEach((f, i) => setTimeout(() => beep(f, 0.3, 'triangle', 0.1), i * 130));
   document.exitPointerLock?.();
-  // Achievement: only counts if every level of this run was actually cleared in this mode
-  const legit = levelsCleared === LEVELS.length;
+  // Achievement: every level of this mode cleared (on the map). Best run = levels 1-10 in one go.
+  const allCleared = !devRun && modeLevels(modeKey).filter(Boolean).length === LEVELS.length;
+  const fullRun = levelsCleared === LEVELS.length;
   const prev = progress[modeKey];
-  const firstClear = legit && !prev;
-  const isBest = legit && (!prev || deaths < prev.bestDeaths || (deaths === prev.bestDeaths && runTime < prev.bestTime));
-  if (legit) {
+  const firstClear = allCleared && !prev;
+  const isBest = allCleared && fullRun && (!prev || prev.bestDeaths == null || deaths < prev.bestDeaths ||
+                 (deaths === prev.bestDeaths && runTime < prev.bestTime));
+  if (allCleared) {
     progress[modeKey] = {
       beatenAt: prev?.beatenAt || Date.now(),
-      bestDeaths: isBest ? deaths : prev.bestDeaths,
-      bestTime: isBest ? runTime : prev.bestTime,
+      bestDeaths: isBest ? deaths : prev?.bestDeaths ?? null,
+      bestTime: isBest ? runTime : prev?.bestTime ?? null,
       clears: (prev?.clears || 0) + 1,
     };
     saveProgress();
   }
-  if (firstClear) {
-    setTimeout(() => {
-      toast('Achievement unlocked', M.achTitle);
-      [784, 988, 1175, 1568].forEach((f, i) => setTimeout(() => beep(f, 0.18, 'square', 0.06), i * 90));
-    }, 700);
-  }
-  $('endMode').textContent = M.end + (isBest && prev ? ' New personal best!' : '');
+  pendingAch = firstClear; // shown after THE END
+  $('endMode').textContent = M.end + (isBest && prev?.bestDeaths != null ? ' New personal best!' : '');
   const u = $('endUnlock');
   u.classList.toggle('hidden', !firstClear);
   if (firstClear) u.innerHTML = `${ICON.trophy}<span>Achievement unlocked: ${M.achTitle}</span>`;
   $('endTable').innerHTML =
-    LEVELS.map((L, i) => `<tr><td>Level ${i + 1} · ${L.name}</td><td>${levelDeaths[i]} deaths</td></tr>`).join('') +
+    LEVELS.map((L, i) => levelDeaths[i] == null ? '' : `<tr><td>Level ${i + 1} · ${L.name}</td><td>${levelDeaths[i]} deaths</td></tr>`).join('') +
     `<tr class="total"><td>Total deaths</td><td>${deaths}</td></tr><tr class="total"><td>Total time</td><td>${fmt(runTime)}</td></tr>`;
-  setTimeout(() => { if (state === 'finished') { $msg.textContent = ''; show('end'); } }, 3200);
+  startCutscene();
+}
+
+// ---------- Grand prize cutscene ----------
+// walk up -> open chest -> gold light on Billy's face -> pan to the balloon -> grab it -> fly away -> THE END
+let pendingAch = false;
+const V3 = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
+const cut = { t: 0, phase: -1, T: [], pos: V3(), look: V3(), from: { x: 0, z: 0 }, to: { x: 0, z: 0 },
+              pose: { legA: 0, armA: 0, sym: true }, awe: false, fired: {} };
+const ease = u => u < 0.5 ? 2 * u * u : 1 - (-2 * u + 2) ** 2 / 2;
+const clamp01 = u => Math.max(0, Math.min(1, u));
+function startCutscene() {
+  state = 'cutscene';
+  document.body.classList.add('cine');
+  $msg.textContent = ''; $banner.style.opacity = 0; bannerT = 0;
+  const c = chest.position;
+  Object.assign(billy, { vx: 0, vy: 0, vz: 0, flipping: false, angle: 0, grounded: true, y: c.y + HY, floating: false });
+  cut.from = { x: billy.x, z: billy.z }; cut.to = { x: c.x, z: c.z + 1.0 };
+  const walk = Math.max(2.6, Math.hypot(cut.to.x - billy.x, cut.to.z - billy.z) / 0.7);
+  cut.T = [walk, 2.0, 2.6, 3.2, 2.0, 5.5]; // walk, open, face, pan, take, fly
+  cut.t = 0; cut.phase = -1; cut.fired = {}; cut.awe = false;
+  cut.pos.copy(camera.position); cut.look.copy(camTarget);
+}
+function toCredits() {
+  state = 'finished';
+  billy.floating = true; balloon.visible = true; balloon.scale.setScalar(1);
+  document.body.classList.remove('cine');
+  show('theEnd');
+  setTimeout(() => document.body.classList.remove('fading'), 300);
+  [392, 523, 659, 784].forEach((f, i) => setTimeout(() => beep(f, 1.1, 'sine', 0.06), 700 + i * 220));
+}
+function stepCutscene(dt) {
+  cut.t += dt;
+  let i = 0, t0 = 0;
+  while (i < cut.T.length && cut.t > t0 + cut.T[i]) { t0 += cut.T[i]; i++; }
+  if (i >= cut.T.length) { toCredits(); return; }
+  const u = clamp01((cut.t - t0) / cut.T[i]);
+  const entered = i !== cut.phase; cut.phase = i;
+  const once = k => cut.fired[k] ? false : (cut.fired[k] = true);
+  const c = chest.position, top = c.y, P = cut.pose;
+  const head = V3(billy.x, billy.y + 0.56, billy.z);
+  const facePos = V3(c.x + 0.6, top + 1.35, c.z - 0.05);
+  let camPos, camLook, k = 2.2, snap = false;
+
+  if (i === 0) { // Billy slowly walks up to the chest
+    const e = ease(u);
+    billy.x = cut.from.x + (cut.to.x - cut.from.x) * e; billy.z = cut.from.z + (cut.to.z - cut.from.z) * e;
+    const ty = Math.atan2(-(c.x - billy.x), -(c.z - billy.z));
+    billy.yaw += angDiff(ty, billy.yaw) * Math.min(1, dt * 5);
+    billy.walkT += dt * 7;
+    P.legA = Math.sin(billy.walkT) * 0.45 * (u < 0.92 ? 1 : 0); P.armA = -P.legA; P.sym = false;
+    camPos = V3(billy.x + 3.4, top + 1.8, billy.z + 1.8);
+    camLook = V3((billy.x + c.x) / 2, top + 0.9, (billy.z + c.z) / 2);
+  } else if (i === 1) { // reaches out and opens it
+    if (entered) beep(110, 0.9, 'sawtooth', 0.04, -40); // creak
+    billy.yaw += angDiff(0, billy.yaw) * Math.min(1, dt * 6);
+    P.legA = 0; P.armA = 1.2 + 0.3 * clamp01(u * 3); P.sym = true;
+    const lid = ease(clamp01((u - 0.3) / 0.7));
+    chestLid.rotation.x = -1.95 * lid;
+    chestLight.intensity = 1.5 + 4 * lid; chestBeam.material.opacity = 0.13 * lid;
+    if (u > 0.35 && once('choir')) {
+      [523, 659, 784, 1047].forEach(f => beep(f, 2.4, 'sine', 0.045));
+      burst(30, c.x, top + 0.8, c.z, 5, 0xffd76a, 1.5);
+    }
+    camPos = V3(billy.x - 2.6, top + 1.7, billy.z + 0.9);
+    camLook = V3(c.x - 0.2, top + 0.6, c.z + 0.4);
+  } else if (i === 2) { // the golden light shines onto Billy's face
+    snap = entered; // hard cut to the close-up
+    cut.awe = true; P.armA = 0.35; P.legA = 0; P.sym = true;
+    const g = ease(clamp01(u * 1.5));
+    mats.skin.emissive.setRGB(0.3 * g, 0.19 * g, 0.03 * g);
+    chestLight.intensity = 5.5 + Math.sin(cut.t * 6) * 0.6;
+    if (Math.random() < dt * 20) burst(1, c.x + (Math.random() - 0.5), top + 0.8, c.z + (Math.random() - 0.5) * 0.6, 1.2, 0xffd76a, 1);
+    camPos = facePos; camLook = head;
+  } else if (i === 3) { // camera pans from his face to the chest: a shiny red balloon rises out
+    const e = ease(u), sc = 0.2 + 0.8 * ease(clamp01(u * 1.3));
+    balloon.visible = true; balloon.scale.setScalar(sc); balloon.position.set(c.x, top + 0.3, c.z);
+    if (once('reveal')) [784, 988, 1175, 1568, 1976].forEach((f, j) => setTimeout(() => beep(f, 0.35, 'triangle', 0.06), j * 120));
+    const ball = V3(c.x, top + 0.3 + 2.2 * sc, c.z);
+    if (Math.random() < dt * 14)
+      burst(1, ball.x + (Math.random() - 0.5) * 0.9, ball.y, ball.z + (Math.random() - 0.5) * 0.9, 1.5, Math.random() < 0.5 ? 0xffd76a : 0xff8a80, 0.5);
+    camLook = head.clone().lerp(ball, e);
+    camPos = facePos.clone().lerp(V3(c.x + 2.3, top + 0.9, c.z + 0.6), e); // beside the chest, looking up at it
+    snap = true; // the pan itself is the easing
+  } else if (i === 4) { // Billy takes it
+    const e = ease(u);
+    balloon.scale.setScalar(1);
+    balloon.position.copy(V3(c.x, top + 0.3, c.z).lerp(V3(billy.x, billy.y + 0.85, billy.z), e));
+    P.armA = 0.35 + (3 - 0.35) * e; P.legA = 0; P.sym = true; cut.awe = u < 0.5;
+    billy.yaw = Math.PI * ease(clamp01((u - 0.3) / 0.7)); // turns round, balloon in hand
+    chestBeam.material.opacity *= Math.max(0, 1 - dt * 2);
+    mats.skin.emissive.multiplyScalar(Math.max(0, 1 - dt * 1.2));
+    chestLight.intensity = Math.max(2.5, chestLight.intensity - dt * 3);
+    if (u > 0.85 && once('yay')) beep(660, 0.25, 'square', 0.06, 300);
+    camPos = V3(c.x + 3.2, top + 2.0, c.z + 5.2); camLook = V3(billy.x, top + 2.1, billy.z);
+  } else { // and he flies away
+    billy.floating = true; // balloon now follows his hand
+    billy.y += (0.3 + u * 3.2) * dt; billy.yaw += dt * 0.35;
+    P.legA = 0.25 + Math.sin(cut.t * 5) * 0.15; P.armA = 3; P.sym = true;
+    if (once('whoosh')) beep(300, 1.4, 'sine', 0.05, 500);
+    camPos = cut.pos.clone(); camLook = V3(billy.x, billy.y + 0.6, billy.z); k = 3;
+    if (u > 0.78 && once('fade')) document.body.classList.add('fading');
+  }
+  const f = snap ? 1 : 1 - Math.exp(-dt * k);
+  cut.pos.lerp(camPos, f); cut.look.lerp(camLook, f);
 }
 
 function overlaps(p) {
@@ -1627,6 +2060,9 @@ function step(dt) {
   }
   // spinning bars
   for (const b of bars) { b.angle = levelTime * b.speed; b.spin.rotation.y = b.angle; }
+  // the chest sparkles while you're trying to reach it
+  if (chest.visible && state === 'playing' && Math.random() < dt * 5)
+    burst(1, chest.position.x + (Math.random() - 0.5) * 1.4, chest.position.y + 0.9, chest.position.z + (Math.random() - 0.5), 0.8, 0xffd76a, 0.8);
   // wind gusts pulse between 40% and 100%
   for (const w of winds) {
     w.gust = 0.4 + 0.6 * (0.5 + 0.5 * Math.sin(levelTime * Math.PI * 2 / w.period));
@@ -1635,8 +2071,7 @@ function step(dt) {
     for (const m of w.streaks) {
       m.position.x += w.dir[0] * sp; m.position.z += w.dir[1] * sp;
       if (m.position.x > w.x + hx) m.position.x -= w.spanX; else if (m.position.x < w.x - hx) m.position.x += w.spanX;
-      if (m.position.z > w.z + hz) m.position.z -= w.d; else if (m.position.z < w.z - hz) m.position.z += w.d;
-    }
+      if (m.position.z > w.z + hz) m.position.z -= w.d; else if (m.position.z < w.z - hz) m.position.z += w.d;    }
   }
   for (const p of pool) {
     if (p.life <= 0) continue;
@@ -1652,6 +2087,7 @@ function step(dt) {
     if ((doneT -= dt) <= 0) loadLevel(levelIndex + 1);
     return;
   }
+  if (state === 'cutscene') { stepCutscene(dt); return; }
   if (state === 'finished' && billy.floating) { billy.y += dt * 1.8; billy.yaw += dt * 0.6; return; } // up, up and away
   if (state !== 'playing') return;
   runTime += dt;
@@ -1786,7 +2222,10 @@ function step(dt) {
   if (billy.y < -10) die('void');
   if (billy.dead) return;
 
-  if (Math.hypot(billy.x - finish.x, billy.z - finish.z) < 1.1 && Math.abs(billy.y - HY - finish.top) < 1.2) reachFinish();
+  const cp = LEVELS[levelIndex].checkpoint;
+  if (cp && !cpReached && billy.grounded && Math.hypot(billy.x - cp.x, billy.z - cp.z) < 3 && Math.abs(billy.y - HY - cp.top) < 0.1) reachCheckpoint();
+  const reach = levelIndex === LEVELS.length - 1 ? 3.4 : 1.1; // walk up near the chest
+  if (Math.hypot(billy.x - finish.x, billy.z - finish.z) < reach && Math.abs(billy.y - HY - finish.top) < 1.2) reachFinish();
 }
 
 function pushOut(axis) {
@@ -1815,21 +2254,62 @@ let camSide = 0;
 const tmpV = new THREE.Vector3();
 const $crosshair = $('crosshair'), $charge = $('charge'), $chargeFill = $('chargeFill'), $chargePct = $('chargePct');
 
+// main menu flips: usually clean, sometimes he flips off the stage (and respawns) or faceplants
+const menuAnim = { start: 0, kind: 'flip', dur: 2.6, fx: {} };
 function updateVisuals() {
   const inMenu = state === 'menu';
-  let hop = 0, angle = billy.angle;
+  let hop = 0, angle = billy.angle, offX = 0, offZ = 0, scale = 1, visible = true, flat = false;
   if (inMenu) {
     // main menu: camera orbits while Billy shows off little backflips
     camYaw = time * 0.18; camPitch = 0.25;
     billy.yaw = camYaw + Math.PI * 0.75;
-    const ph = time % 2.6;
-    if (ph < 0.7) { const u = ph / 0.7; angle = u * Math.PI * 2; hop = Math.sin(u * Math.PI) * 1.4; } else angle = 0;
+    let ph = time - menuAnim.start;
+    if (ph >= menuAnim.dur || ph < 0) {
+      const r = Math.random();
+      menuAnim.kind = r < 0.15 ? 'off' : r < 0.3 ? 'plant' : 'flip';
+      menuAnim.dur = menuAnim.kind === 'flip' ? 2.6 : 3.6;
+      menuAnim.start = time; menuAnim.fx = {}; ph = 0;
+    }
+    const once = k => menuAnim.fx[k] ? false : (menuAnim.fx[k] = true);
+    const bx = Math.sin(billy.yaw), bz = Math.cos(billy.yaw); // backwards (he flips away from where he faces)
+    if (menuAnim.kind === 'flip') {
+      if (ph < 0.7) { const u = ph / 0.7; angle = u * Math.PI * 2; hop = Math.sin(u * Math.PI) * 1.4; } else angle = 0;
+    } else if (menuAnim.kind === 'off') {
+      if (ph < 1.6) { // way too much power: sails off the stage and drops into the void
+        angle = ph / 0.8 * Math.PI * 2;
+        hop = 9 * ph - 10 * ph * ph;
+        offX = bx * 10 * ph; offZ = bz * 10 * ph;
+        if (ph > 0.9 && once('fall')) beep(700, 1.1, 'sine', 0.04, -560);
+      } else if (ph < 2.2) {
+        visible = false;
+      } else { // pop back in at the spawn
+        const u = Math.min(1, (ph - 2.2) / 0.35);
+        scale = u < 1 ? 1.25 * Math.sin(u * Math.PI / 2) - 0.25 * u * u : 1;
+        angle = 0;
+        if (once('pop')) { beep(520, 0.08, 'square', 0.05, 200); burst(14, billy.x, billy.y, billy.z, 4, 0x3ddc84, 0.8); }
+      }
+    } else { // faceplant: under-rotates and lands flat on his face, then peels himself off the floor
+      const LIE = -(HY - 0.18);
+      if (ph < 0.7) {
+        const u = ph / 0.7;
+        angle = u * Math.PI * 1.5;
+        hop = Math.sin(u * Math.PI) * 1.4 + LIE * Math.max(0, (u - 0.75) / 0.25);
+      } else if (ph < 1.9) {
+        angle = Math.PI * 1.5; hop = LIE; flat = true;
+        if (once('splat')) { beep(90, 0.22, 'square', 0.09, -40); burst(12, billy.x, billy.y - HY, billy.z, 3, 0xcfc6b0, 0.5); shake = 0.25; }
+      } else if (ph < 2.7) {
+        const u = (ph - 1.9) / 0.8, e = u * u * (3 - 2 * u);
+        angle = Math.PI * 1.5 + e * Math.PI * 0.5; hop = LIE * (1 - e);
+      } else angle = 0;
+    }
   }
-  billyRoot.position.set(billy.x, billy.y + hop, billy.z);
+  billyRoot.visible = visible;
+  billyRoot.scale.setScalar(Math.max(0.01, scale));
+  billyRoot.position.set(billy.x + offX, billy.y + hop, billy.z + offZ);
   yawG.rotation.y = billy.yaw;
   flipG.rotation.x = angle;
   flipG.rotation.z = billy.dead ? billy.angle * 0.6 : 0;
-  mouth.scale.y = billy.dead ? 4 : 1;
+  mouth.scale.y = billy.dead ? 4 : state === 'cutscene' && cut.awe ? 3 : 1;
   // crouch/squash while charging
   const sq = billy.charging ? billy.power : 0;
   yawG.scale.set(1 + sq * 0.12, 1 - sq * 0.22, 1 + sq * 0.12);
@@ -1846,22 +2326,22 @@ function updateVisuals() {
   const flipPose = billy.flipping || billy.dead || (inMenu && hop > 0);
   if (flipPose) { legA = 1.3; armA = 2.6; }
   else if (state === 'levelDone' || state === 'finished') { legA = 0; armA = 3; }
+  else if (inMenu && flat) { legA = 0; armA = 2.9 + Math.sin(time * 9) * 0.1; } // splayed out, twitching
   else if (!billy.grounded && !inMenu) { legA = 0.3; armA = 1.2; }
   else { legA = Math.sin(billy.walkT) * 0.7; armA = -legA; }
-  const sym = flipPose || (!billy.grounded && !inMenu) || (state !== 'playing' && !inMenu);
+  let sym = flipPose || (!billy.grounded && !inMenu) || (state !== 'playing' && !inMenu);
+  if (state === 'cutscene') ({ legA, armA, sym } = cut.pose);
   legL.rotation.x = legA; legR.rotation.x = sym ? legA : -legA;
   armL.rotation.x = armA; armR.rotation.x = sym ? armA : -armA;
 
   balloonBody.rotation.z = Math.sin(time * 1.3) * 0.07;
   balloonBody.rotation.x = Math.sin(time * 0.9) * 0.05;
-  if (billy.floating) {
-    // Billy holds the string over his head and drifts off into the sky
-    balloon.position.set(billy.x, billy.y + 0.55, billy.z);
-    balloonWeight.visible = false;
-  } else if (finish) {
-    balloon.position.set(finish.x, finish.top + Math.sin(time * 2) * 0.08, finish.z);
-    balloonWeight.visible = true;
+  if (billy.floating) balloon.position.set(billy.x, billy.y + 0.85, billy.z); // held up in his hand, drifting off
+  if (chest.visible && state !== 'cutscene' && !billy.floating) {
+    chestGold.emissiveIntensity = 0.45 + 0.2 * Math.sin(time * 3);
+    chestLight.intensity = 1.5 + 0.5 * Math.sin(time * 3);
   }
+  if (cpFlag) cpFlag.rotation.y = Math.sin(time * 3) * 0.3;
   if (finish) {
     portal.position.set(finish.x, finish.top + 1.2, finish.z);
     portal.rotation.y = Math.sin(time * 1.5) * 0.4;
@@ -1887,6 +2367,7 @@ function updateVisuals() {
   camera.position.x += (Math.random() - 0.5) * shake;
   camera.position.y += (Math.random() - 0.5) * shake;
   camera.lookAt(camTarget.x + ox, camTarget.y + 0.8, camTarget.z + oz);
+  if (state === 'cutscene') { camera.position.copy(cut.pos); camera.lookAt(cut.look); }
 
   sun.position.set(billy.x + 6, billy.y + 18, billy.z + 4);
   sun.target.position.set(billy.x, billy.y, billy.z);
@@ -1909,9 +2390,15 @@ goMainMenu();
 {
   const lv = parseInt(new URLSearchParams(location.search).get('level'), 10);
   if (lv >= 1 && lv <= LEVELS.length) {
-    startRun('baby'); levelsCleared = -99; loadLevel(lv - 1);
+    devRun = true; startRun('baby', lv - 1);
     const cam = new URLSearchParams(location.search).get('cam'); // optional camera yaw for screenshots
     if (cam) { camYaw = parseFloat(cam); camPitch = 0.55; }
+  }
+  // index.html?ending previews the grand prize cutscene (never saves anything)
+  if (new URLSearchParams(location.search).has('ending')) {
+    devRun = true; startRun('baby', LEVELS.length - 1);
+    Object.assign(billy, { x: finish.x, z: finish.z + 3.2, y: finish.top + HY, grounded: true });
+    reachFinish();
   }
 }
 camTarget.set(billy.x, billy.y, billy.z);

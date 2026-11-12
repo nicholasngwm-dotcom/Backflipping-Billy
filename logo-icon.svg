@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Backflipping Billy logo">
+      <defs><linearGradient id="bbSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3c7be0"/><stop offset="1" stop-color="#8fd0f5"/></linearGradient></defs>
+      <circle cx="100" cy="100" r="94" fill="#1b2240" stroke="#f6c945" stroke-width="8"/>
+      <circle cx="100" cy="100" r="80" fill="url(#bbSky)"/>
+      <path d="M46 124 A58 58 0 1 1 150 128" fill="none" stroke="#e2574c" stroke-width="12" stroke-linecap="round"/>
+      <polygon points="148.9,139 165.3,128 142.7,119" fill="#e2574c" stroke="#e2574c" stroke-width="3" stroke-linejoin="round"/>
+      <g stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".85"><path d="M40 150l16-5"/><path d="M48 163l14-7"/><path d="M62 173l11-8"/></g>
+      <g transform="rotate(-25 100 114)">
+        <circle cx="100" cy="116" r="32" fill="#f2c29b" stroke="#11162b" stroke-width="4"/>
+        <path d="M68 112 A32 32 0 0 1 132 112 Z" fill="#3c7be0" stroke="#11162b" stroke-width="4" stroke-linejoin="round"/>
+        <rect x="120" y="106" width="30" height="9" rx="4.5" fill="#24509e" stroke="#11162b" stroke-width="3.5"/>
+        <circle cx="94" cy="123" r="3.8" fill="#11162b"/><circle cx="111" cy="123" r="3.8" fill="#11162b"/>
+        <path d="M92 132 Q102 146 113 131 Z" fill="#9c2f27" stroke="#11162b" stroke-width="3.5" stroke-linejoin="round"/>
+      </g>
+      <path d="M156 58l3 8 8 3-8 3-3 8-3-8-8-3 8-3z" fill="#f6c945"/>
+    </svg>
