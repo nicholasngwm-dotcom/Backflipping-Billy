@@ -40,7 +40,7 @@
 
   /* ---------- HUD ---------- */
   .hud { position: fixed; pointer-events: none; z-index: 2; }
-  body.inmenu .hud { display: none; }
+  body.inmenu .hud { display: none !important; }
   .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
           backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); box-shadow: 0 10px 30px rgba(0,0,0,.25); }
   .pill { background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 8px 16px;
@@ -218,7 +218,7 @@
   .setRow.check input { width: 20px; height: 20px; accent-color: var(--gold); }
   input[type=range] { width: 100%; accent-color: var(--gold); }
 
-  .prizeIcon { width: 88px; height: 88px; color: var(--gold); filter: drop-shadow(0 6px 0 var(--gold-deep)); }
+  .prizeIcon { width: 96px; height: 96px; color: var(--red); filter: drop-shadow(0 6px 0 var(--red-deep)); }
   .unlock { display: inline-flex; gap: 10px; align-items: center; padding: 10px 16px; border-radius: 14px; border: 1px solid var(--gold);
             background: rgba(255,201,60,.1); font-weight: 800; }
   .unlock .ico { color: var(--gold); width: 22px; height: 22px; }
@@ -346,7 +346,17 @@
       <li>To go forward, face the camera (press S), then flip.</li>
       <li>Land upright, or Billy lands on his head.</li>
       <li>Die and you restart the level. Beat a level and it's saved.</li>
-      <li>Beat all levels in a mode to unlock that mode's achievement.</li>
+      <li>Beat all 10 levels in a mode to unlock that mode's achievement, and win Billy's balloon.</li>
+    </ul>
+    <div class="sep"></div>
+    <h3>Hazards</h3>
+    <ul>
+      <li><b>Ice</b> (glossy, frosty blue): Billy keeps sliding, even while charging.</li>
+      <li><b>Crumbling blocks</b> (cracked rock): shake and crumble a second after you stand on them.</li>
+      <li><b>Conveyor belts</b> (yellow arrows): drag Billy along, even while charging. Flip before you ride off the edge.</li>
+      <li><b>Blinking platforms</b> (purple): vanish on a timer. They flash right before they go.</li>
+      <li><b>Spinning bars</b>: low bars must be flipped over. High bars hit you mid-flip, so wait until they pass.</li>
+      <li><b>Wind</b> (white streaks): strong gusts shove Billy around in the air. Aim into it.</li>
     </ul>
   </div>
   <button class="btn ghost" data-go="mainMenu">Back</button>
@@ -387,11 +397,11 @@
 
 <!-- ================= END ================= -->
 <div id="end" class="screen hidden">
-  <svg class="prizeIcon" viewBox="0 0 24 24" fill="currentColor"><path d="M7 3h10v2h3a1 1 0 0 1 1 1v2a5 5 0 0 1-4.6 5A5 5 0 0 1 13 15.9V18h3a1 1 0 0 1 1 1v2H7v-2a1 1 0 0 1 1-1h3v-2.1A5 5 0 0 1 7.6 13 5 5 0 0 1 3 8V6a1 1 0 0 1 1-1h3V3Zm10 4v3.9A3 3 0 0 0 19 8V7h-2ZM5 7v1a3 3 0 0 0 2 2.9V7H5Z"/></svg>
+  <svg class="prizeIcon" viewBox="0 0 24 24"><ellipse cx="12" cy="8.6" rx="6.3" ry="7.4" fill="currentColor"/><path d="M10.7 15.8h2.6L12 17.6z" fill="currentColor"/><path d="M12 17.6c-1.6 1.3 1.6 2.4 0 4" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><ellipse cx="9.4" cy="6" rx="1.3" ry="2" fill="#fff" opacity=".5"/></svg>
   <div class="panelHead"><div class="eyebrow gold">You actually did it</div><h2>Grand Prize</h2><p class="muted" id="endMode"></p></div>
   <div id="endUnlock" class="unlock hidden"></div>
   <table class="endTable" id="endTable"></table>
-  <p class="muted">Your prize: a trophy made of pure pixels. Worth every death.</p>
+  <p class="muted">Your prize: Billy's balloon. He floated away with it. Worth every death.</p>
   <div class="row-btns">
     <button class="btn primary" data-go="modeMenu">Play again</button>
     <button class="btn" data-go="achMenu">Achievements</button>
@@ -418,6 +428,8 @@ const T = {
   flipSpin: 0.89,    // full 360 takes this fraction of the flat-ground airtime
   safeLandDeg: 60,   // must be within this many degrees of upright to land
   deathTime: 1.5,    // seconds before respawn (long enough to enjoy the trombone)
+  iceGrip: 2.5,      // how fast Billy's speed adapts on ice (lower = slidier)
+  crumbleTime: 1.0,  // seconds a crumbling block survives once stood on
   camDist: 7, mouseSens: 0.0025,
   shoulderOffset: 1.1, shiftLockDist: 6,
 };
@@ -428,8 +440,15 @@ const HX = 0.3, HY = 0.86; // player hitbox half extents (x/z, y)
 
 // ---------- Levels ----------
 // platform: center x/z, size w (x) d (z), top y, optional h (thickness)
-// move: { axis: 'x'|'y'|'z', range, speed, phase }
+//   move:    { axis: 'x'|'y'|'z', range, speed, phase }
+//   ice:     true -> slippery, Billy keeps sliding (incl. the speed he landed with)
+//   crumble: true -> shakes when stood on, falls after T.crumbleTime
+//   conveyor: { axis: 'x'|'z', speed } -> drags Billy along while he stands on it (m/s, signed)
+//   blink:   { period, on, phase } -> solid for the first `on` fraction of each period, then vanishes
 // spike strip: center x/z, size w/d, top (y of the floor it sits on)
+// bars:  spinning sweepers { x, z, top (floor y), len (half length), speed (rad/s), arms: 1 | 2,
+//        y: height above floor (default 0.45 = flip over it; ~2 = high bar, walk under, don't flip into it) }
+// winds: gust zones { x, z, w, d, fx, fz (m/s^2), period (s) } - push Billy while airborne
 const LEVELS = [
   {
     name: 'Normal Jumping',
@@ -478,6 +497,134 @@ const LEVELS = [
     ],
     spikes: [],
   },
+  {
+    name: 'Ice',
+    spawn: { x: 0, z: 2.5, top: 0 },
+    finish: { x: 0, z: -55, top: 1.5 },
+    platforms: [
+      { x: 0, z: 0,   w: 6,   d: 8,   top: 0 },
+      { x: 0, z: -12, w: 5,   d: 8,   top: 0,   ice: true },   // you keep sliding after landing
+      { x: 0, z: -24, w: 4,   d: 6,   top: 0.5, ice: true },   // charging on ice = sliding while aiming
+      { x: 0, z: -33, w: 2.5, d: 2.5, top: 0.5 },              // tiny grippy rest stop
+      { x: 0, z: -42, w: 2,   d: 10,  top: 1,   ice: true },   // narrow ice lane
+      { x: 0, z: -54, w: 6,   d: 6,   top: 1.5 },
+    ],
+    spikes: [],
+  },
+  {
+    name: 'Crumbling Blocks',
+    spawn: { x: 0, z: 2.5, top: 0 },
+    finish: { x: -2.5, z: -54, top: 1.8 },
+    platforms: [
+      { x: 0,    z: 0,     w: 6,   d: 8,   top: 0 },
+      { x: 0,    z: -9,    w: 3,   d: 3,   top: 0,   crumble: true },
+      { x: 0,    z: -15,   w: 3,   d: 3,   top: 0.3, crumble: true },
+      { x: 2.5,  z: -21,   w: 2.5, d: 2.5, top: 0.6, crumble: true },
+      { x: 2.5,  z: -28,   w: 3,   d: 3,   top: 0.6 },                // breather
+      { x: 2.5,  z: -34.5, w: 2,   d: 2,   top: 0.9, crumble: true },
+      { x: 0,    z: -40,   w: 2,   d: 2,   top: 1.2, crumble: true },
+      { x: -2.5, z: -45.5, w: 2,   d: 2,   top: 1.5, crumble: true },
+      { x: -2.5, z: -53,   w: 6,   d: 6,   top: 1.8 },
+    ],
+    spikes: [],
+  },
+  {
+    name: 'Conveyor Belts',
+    spawn: { x: 0, z: 2.5, top: 0 },
+    finish: { x: 0, z: -50, top: 1.6 },
+    platforms: [
+      { x: 0, z: 0,   w: 6, d: 8, top: 0 },
+      { x: 0, z: -11, w: 5, d: 6, top: 0,   conveyor: { axis: 'x', speed: 2 } },    // drags you sideways
+      { x: 0, z: -20, w: 3, d: 6, top: 0.4, conveyor: { axis: 'z', speed: 3 } },    // drags you back
+      { x: 0, z: -30, w: 3, d: 6, top: 0.8, conveyor: { axis: 'z', speed: -3 } },   // drags you off the front
+      { x: 0, z: -40, w: 5, d: 4, top: 1.2, conveyor: { axis: 'x', speed: -3 } },
+      { x: 0, z: -50, w: 6, d: 6, top: 1.6 },
+    ],
+    spikes: [],
+  },
+  {
+    name: 'Blinking Platforms',
+    spawn: { x: 0, z: 2.5, top: 0 },
+    finish: { x: 0, z: -51, top: 1.5 },
+    platforms: [
+      { x: 0, z: 0,   w: 6,   d: 8,   top: 0 },
+      { x: 0, z: -10, w: 3,   d: 3,   top: 0,   h: 0.4, blink: { period: 3,   on: 0.6,  phase: 0 } },
+      { x: 0, z: -17, w: 3,   d: 3,   top: 0.3, h: 0.4, blink: { period: 3,   on: 0.6,  phase: 0.5 } },
+      { x: 0, z: -24, w: 3,   d: 3,   top: 0.6, h: 0.4, blink: { period: 2.4, on: 0.55, phase: 0 } },
+      { x: 3, z: -30, w: 2.5, d: 2.5, top: 0.9, h: 0.4, blink: { period: 2.4, on: 0.55, phase: 0.5 } },
+      { x: 3, z: -37, w: 3,   d: 3,   top: 0.9 },                                                     // breather
+      { x: 0, z: -43, w: 2.5, d: 2.5, top: 1.2, h: 0.4, blink: { period: 2,   on: 0.5,  phase: 0.25 } },
+      { x: 0, z: -50, w: 6,   d: 6,   top: 1.5 },
+    ],
+    spikes: [],
+  },
+  {
+    name: 'Spinning Bars',
+    spawn: { x: 0, z: 2.5, top: 0 },
+    finish: { x: 0, z: -48, top: 1 },
+    platforms: [
+      { x: 0, z: 0,   w: 6, d: 8,  top: 0 },
+      { x: 0, z: -18, w: 5, d: 24, top: 0 },
+      { x: 0, z: -37, w: 5, d: 8,  top: 0.5 },
+      { x: 0, z: -47, w: 6, d: 6,  top: 1 },
+    ],
+    spikes: [],
+    bars: [
+      { x: 0, z: -9.5,  top: 0,   len: 2.5, speed: 1.6,  arms: 1 },
+      { x: 0, z: -16,   top: 0,   len: 2.5, speed: -2.0, arms: 1 },
+      { x: 0, z: -16,   top: 0,   len: 2.5, speed: 1.4,  arms: 1, y: 2.05 },   // high bar: don't flip into it
+      { x: 0, z: -22.5, top: 0,   len: 2.5, speed: 2.4,  arms: 1 },
+      { x: 0, z: -28,   top: 0,   len: 2,   speed: -1.8, arms: 2 },
+      { x: 0, z: -37,   top: 0.5, len: 2.4, speed: 2.4,  arms: 2 },            // the blender
+      { x: 0, z: -47,   top: 1,   len: 2.6, speed: -1.2, arms: 1 },            // one last sweep at the finish
+    ],
+  },
+  {
+    name: 'Wind',
+    spawn: { x: 0, z: 2.5, top: 0 },
+    finish: { x: 0, z: -46, top: 1.5 },
+    platforms: [
+      { x: 0, z: 0,   w: 6, d: 8, top: 0 },
+      { x: 0, z: -10, w: 3, d: 4, top: 0 },
+      { x: 0, z: -19, w: 3, d: 4, top: 0.5 },
+      { x: 0, z: -28, w: 2, d: 4, top: 1 },
+      { x: 0, z: -37, w: 3, d: 3, top: 1 },
+      { x: 0, z: -46, w: 6, d: 6, top: 1.5 },
+    ],
+    spikes: [],
+    winds: [
+      { x: 0, z: -6,     w: 40, d: 4,   fx: 13,  fz: 0,   period: 2.4 },  // crosswind right
+      { x: 0, z: -14.5,  w: 40, d: 5,   fx: -16, fz: 0,   period: 2 },    // crosswind left
+      { x: 0, z: -23.5,  w: 40, d: 5,   fx: 0,   fz: 11,  period: 3 },    // headwind
+      { x: 0, z: -33,    w: 40, d: 5,   fx: 0,   fz: -11, period: 3 },    // tailwind: overshoot
+      { x: 0, z: -40.75, w: 40, d: 4.5, fx: 15,  fz: 0,   period: 1.8 },
+    ],
+  },
+  {
+    name: 'Final Gauntlet',
+    spawn: { x: 0, z: 2.5, top: 0 },
+    finish: { x: 0, z: -76, top: 1.9 },
+    platforms: [
+      { x: 0, z: 0,      w: 6,   d: 8,   top: 0 },
+      { x: 0, z: -11,    w: 4,   d: 6,   top: 0,   ice: true },
+      { x: 0, z: -18,    w: 2.5, d: 2.5, top: 0.3, crumble: true },
+      { x: 0, z: -27,    w: 5,   d: 8,   top: 0.6 },
+      { x: 0, z: -35,    w: 2.5, d: 2.5, top: 0.6, h: 0.4, move: { axis: 'x', range: 2.5, speed: 1.2, phase: 0 } },
+      { x: 0, z: -41,    w: 2.5, d: 2.5, top: 1.0, h: 0.4, blink: { period: 2.4, on: 0.55, phase: 0 } },
+      { x: 0, z: -51.25, w: 5,   d: 9.5, top: 1.4, conveyor: { axis: 'x', speed: 2.5 } },
+      { x: 0, z: -63,    w: 5,   d: 8,   top: 1.4 },
+      { x: 0, z: -75,    w: 6,   d: 6,   top: 1.9 },
+    ],
+    spikes: [
+      { x: 0, z: -27, w: 5, d: 2.5, top: 0.6 },
+    ],
+    bars: [
+      { x: 0, z: -63, top: 1.4, len: 2.3, speed: 2, arms: 1 },
+    ],
+    winds: [
+      { x: 0, z: -69.5, w: 40, d: 5, fx: -13, fz: 0, period: 2 },
+    ],
+  },
 ];
 
 // ---------- Death insults ----------
@@ -502,6 +649,10 @@ const INSULTS = {
   void: [
     'Billy fell. Your standards fell further.', 'The void accepts you. Nobody else does.', 'Gap: 1. You: 0.',
     'Bye Billy. Billy deserved better.', 'Did you think Billy could fly?',
+  ],
+  bar: [
+    'Clotheslined by a spinning bar.', 'It was spinning. Right there. The whole time.', 'Timing: nonexistent.',
+    'The bar sends its regards.', 'Billy got swept. So did your dignity.',
   ],
   baby: [
     'Baby gamer moment.', 'Want a pacifier with that?', 'Nap time, baby gamer?',
@@ -625,18 +776,28 @@ for (let i = 0; i < 28; i++) {
   scene.add(g);
 }
 
-// ---------- Finish objects (portal for normal levels, trophy for the last) ----------
-const gold = new THREE.MeshStandardMaterial({ color: 0xf6c945, metalness: 0.85, roughness: 0.25 });
-const trophy = new THREE.Group();
+// ---------- Finish objects (portal for normal levels, Billy's balloon for the last) ----------
+// The grand prize: Billy's red balloon, tied to a little weight. Grab it and he floats away.
+const balloon = new THREE.Group();
+const balloonBody = new THREE.Group(); // sways
+const balloonWeight = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.16, 0.2), new THREE.MeshStandardMaterial({ color: 0x2f3b63 }));
 {
-  const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.15, 0.55, 20), gold); cup.position.y = 0.55;
-  const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.3), gold); stem.position.y = 0.15;
-  const base = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.1, 0.5), gold);
-  const hL = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.04, 8, 16), gold); hL.position.set(-0.42, 0.6, 0);
-  const hR = hL.clone(); hR.position.x = 0.42;
-  trophy.add(cup, stem, base, hL, hR);
-  trophy.traverse(m => m.castShadow = true);
-  trophy.scale.setScalar(1.4);
+  const red = new THREE.MeshStandardMaterial({ color: 0xe2574c, roughness: 0.22, metalness: 0.05 });
+  const ball = new THREE.Mesh(new THREE.SphereGeometry(0.55, 32, 24), red);
+  ball.scale.set(1, 1.18, 1); ball.position.y = 2.2;
+  const knot = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.16, 12), red);
+  knot.rotation.x = Math.PI; knot.position.y = 2.2 - 0.65 - 0.05;
+  const shine = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 10),
+    new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55 }));
+  shine.scale.set(0.8, 1.3, 0.5); shine.position.set(-0.22, 2.42, 0.42);
+  const curve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(0, 1.48, 0), new THREE.Vector3(0.08, 1.1, 0), new THREE.Vector3(-0.07, 0.65, 0), new THREE.Vector3(0, 0.15, 0),
+  ]);
+  const string = new THREE.Mesh(new THREE.TubeGeometry(curve, 24, 0.012, 6), new THREE.MeshBasicMaterial({ color: 0xf5f7fc }));
+  balloonBody.add(ball, knot, shine, string);
+  balloonBody.traverse(m => { if (m.isMesh) m.castShadow = true; });
+  balloonWeight.position.y = 0.08; balloonWeight.castShadow = true;
+  balloon.add(balloonBody, balloonWeight);
 }
 const portal = new THREE.Group();
 {
@@ -647,7 +808,7 @@ const portal = new THREE.Group();
   ring.castShadow = true;
   portal.add(ring, inner);
 }
-scene.add(trophy, portal);
+scene.add(balloon, portal);
 
 // ---------- Billy ----------
 const mats = {
@@ -881,7 +1042,76 @@ const COLORS = [0x5cb85c, 0x3c7be0, 0xe2574c, 0xf6c945, 0x9b59d0, 0x3ddc84];
 const spikeMat = new THREE.MeshStandardMaterial({ color: 0xc9ced6, metalness: 0.7, roughness: 0.3 });
 const spikeGeo = new THREE.ConeGeometry(0.17, 0.55, 6);
 let levelGroup = new THREE.Group(); scene.add(levelGroup);
-let platforms = [], spikes = [], finish = null, levelIndex = 0;
+let platforms = [], spikes = [], bars = [], winds = [], finish = null, levelIndex = 0;
+// special surface looks (top colour, side colour)
+const SURFACE = {
+  ice:     [0xbfe8ff, 0x7fb6d9],
+  crumble: [0xd2a86a, 0x8a6a40],
+  move:    [0xd98a3a, 0x9c6229],
+};
+// procedural textures so special surfaces read at a glance
+function canvasTex(draw) {
+  const c = document.createElement('canvas'); c.width = c.height = 256;
+  draw(c.getContext('2d'), 256);
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+  return t;
+}
+function crack(g, x, y, len, ang, width) {
+  g.lineWidth = width; g.beginPath(); g.moveTo(x, y);
+  for (let i = 0; i < 6; i++) {
+    ang += (Math.random() - 0.5) * 1.2; x += Math.cos(ang) * len / 6; y += Math.sin(ang) * len / 6;
+    g.lineTo(x, y);
+    if (width > 1.5 && Math.random() < 0.3) crack(g, x, y, len * 0.45, ang + (Math.random() < 0.5 ? 1 : -1), width * 0.55);
+  }
+  g.stroke();
+}
+function chevrons(g, S, vertical) {
+  g.fillStyle = '#2b2d33'; g.fillRect(0, 0, S, S);
+  g.strokeStyle = '#f6c945'; g.lineWidth = 22; g.lineJoin = 'miter'; g.lineCap = 'butt';
+  for (let k = 0; k < 2; k++) {
+    const c = S * (0.25 + k * 0.5);
+    g.beginPath();
+    // arrows point toward +u (right) or +v (top of the canvas = texture v up)
+    if (vertical) { g.moveTo(S * 0.18, c + 28); g.lineTo(S / 2, c - 28); g.lineTo(S * 0.82, c + 28); }
+    else          { g.moveTo(c - 28, S * 0.18); g.lineTo(c + 28, S / 2); g.lineTo(c - 28, S * 0.82); }
+    g.stroke();
+  }
+}
+const TEX = {
+  crumble: canvasTex((g, S) => {
+    g.fillStyle = '#c99556'; g.fillRect(0, 0, S, S);
+    for (let i = 0; i < 260; i++) { // grit
+      g.fillStyle = Math.random() < 0.5 ? 'rgba(90,55,25,0.35)' : 'rgba(255,230,180,0.3)';
+      const r = 1 + Math.random() * 3; g.fillRect(Math.random() * S, Math.random() * S, r, r);
+    }
+    g.strokeStyle = '#3d2410'; g.lineCap = 'round'; g.lineJoin = 'round';
+    for (let i = 0; i < 5; i++) crack(g, Math.random() * S, Math.random() * S, 120 + Math.random() * 80, Math.random() * 6.3, 4);
+    g.strokeStyle = 'rgba(61,36,16,0.8)'; g.lineWidth = 3; g.strokeRect(1.5, 1.5, S - 3, S - 3); // chunk edges
+  }),
+  ice: canvasTex((g, S) => {
+    const gr = g.createLinearGradient(0, 0, S, S);
+    gr.addColorStop(0, '#d9f4ff'); gr.addColorStop(0.5, '#a7dcf7'); gr.addColorStop(1, '#d1efff');
+    g.fillStyle = gr; g.fillRect(0, 0, S, S);
+    g.strokeStyle = 'rgba(255,255,255,0.85)'; g.lineCap = 'round';
+    for (let i = 0; i < 9; i++) { // shiny streaks
+      const x = Math.random() * S * 1.5 - S * 0.25, y = Math.random() * S, l = 30 + Math.random() * 70;
+      g.lineWidth = 2 + Math.random() * 5; g.beginPath(); g.moveTo(x, y); g.lineTo(x + l, y - l); g.stroke();
+    }
+    g.strokeStyle = 'rgba(70,140,190,0.45)'; // hairline fractures
+    for (let i = 0; i < 4; i++) crack(g, Math.random() * S, Math.random() * S, 90, Math.random() * 6.3, 1.2);
+    g.fillStyle = 'rgba(255,255,255,0.9)';
+    for (let i = 0; i < 70; i++) g.fillRect(Math.random() * S, Math.random() * S, 2, 2); // frost sparkles
+  }),
+  convX: canvasTex((g, S) => chevrons(g, S, false)),
+  convZ: canvasTex((g, S) => chevrons(g, S, true)),
+};
+function surfaceMap(kind, rx, ry) {
+  const t = TEX[kind].clone(); t.repeat.set(Math.max(1, rx / 2.5), Math.max(1, ry / 2.5)); t.needsUpdate = true;
+  return t;
+}
+const barMat = new THREE.MeshStandardMaterial({ color: 0xe2574c, roughness: 0.4 });
+const barHubMat = new THREE.MeshStandardMaterial({ color: 0x2f3b63, roughness: 0.6 });
 
 function syncPlatform(p) {
   p.minX = p.x - p.w / 2; p.maxX = p.x + p.w / 2;
@@ -892,24 +1122,86 @@ function syncPlatform(p) {
 
 function buildLevel(L) {
   scene.remove(levelGroup);
+  const shared = new Set([spikeGeo, spikeMat, barMat, barHubMat]);
   levelGroup.traverse(o => {
-    if (!o.isMesh || o.geometry === spikeGeo) return;
-    o.geometry.dispose();
-    [].concat(o.material).forEach(m => m.dispose());
+    if (!o.isMesh) return;
+    if (!shared.has(o.geometry)) o.geometry.dispose();
+    [].concat(o.material).forEach(m => { if (!shared.has(m)) { m.map?.dispose(); m.dispose(); } });
   });
   levelGroup = new THREE.Group(); scene.add(levelGroup);
 
   platforms = L.platforms.map((src, i) => {
-    const p = { ...src, h: src.h || 14, dx: 0, dy: 0, dz: 0 };
+    const p = { ...src, h: src.h || 14, dx: 0, dy: 0, dz: 0, cState: 'idle', cT: 0, fallV: 0, gone: false };
     p.base = { x: p.x, y: p.top, z: p.z };
-    const color = p.move ? 0xd98a3a : COLORS[(i + levelIndex * 2) % COLORS.length];
-    const side = new THREE.MeshStandardMaterial({ color: new THREE.Color(color).multiplyScalar(0.72), roughness: 0.8 });
-    const top = new THREE.MeshStandardMaterial({ color, roughness: 0.6 });
-    p.mesh = new THREE.Mesh(new THREE.BoxGeometry(p.w, p.h, p.d), [side, side, top, side, side, side]);
+    const kind = p.ice ? 'ice' : p.crumble ? 'crumble' : p.conveyor ? 'conveyor' : p.blink ? 'blink' : p.move ? 'move' : null;
+    let topMat, sideMat;
+    if (kind === 'ice') {
+      topMat = new THREE.MeshStandardMaterial({ map: surfaceMap('ice', p.w, p.d), roughness: 0.04, metalness: 0.25,
+        emissive: 0x1d4a66, emissiveIntensity: 0.35 });
+      sideMat = new THREE.MeshStandardMaterial({ map: surfaceMap('ice', Math.max(p.w, p.d), 2), color: 0x9fcfe8,
+        roughness: 0.1, metalness: 0.2, transparent: true, opacity: 0.85 });
+    } else if (kind === 'crumble') {
+      topMat = new THREE.MeshStandardMaterial({ map: surfaceMap('crumble', p.w, p.d), roughness: 0.95 });
+      sideMat = new THREE.MeshStandardMaterial({ map: surfaceMap('crumble', Math.max(p.w, p.d), 2), color: 0x9a7a55, roughness: 0.95 });
+    } else if (kind === 'conveyor') {
+      const c = p.conveyor, sgn = Math.sign(c.speed) || 1, map = surfaceMap(c.axis === 'x' ? 'convX' : 'convZ', p.w, p.d);
+      // flip the arrows to point the way the belt moves (texture v runs toward -z)
+      if (c.axis === 'x') map.repeat.x *= sgn; else map.repeat.y *= -sgn;
+      topMat = new THREE.MeshStandardMaterial({ map, roughness: 0.7 });
+      sideMat = new THREE.MeshStandardMaterial({ color: 0x3a3c44, roughness: 0.8 });
+    } else if (kind === 'blink') {
+      topMat = new THREE.MeshStandardMaterial({ color: 0xb06ef0, emissive: 0x5a2a99, emissiveIntensity: 0.6, roughness: 0.4, transparent: true });
+      sideMat = new THREE.MeshStandardMaterial({ color: 0x7a3fc0, emissive: 0x3a1a66, emissiveIntensity: 0.6, roughness: 0.5, transparent: true });
+    } else if (kind) {
+      const [tc, sc] = SURFACE[kind];
+      topMat = new THREE.MeshStandardMaterial({ color: tc, roughness: 0.6 });
+      sideMat = new THREE.MeshStandardMaterial({ color: sc, roughness: 0.8 });
+    } else {
+      const color = COLORS[(i + levelIndex * 2) % COLORS.length];
+      sideMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(color).multiplyScalar(0.72), roughness: 0.8 });
+      topMat = new THREE.MeshStandardMaterial({ color, roughness: 0.6 });
+    }
+    const faces = [sideMat, sideMat, topMat, sideMat, sideMat, sideMat];
+    p.mesh = new THREE.Mesh(new THREE.BoxGeometry(p.w, p.h, p.d), faces);
     p.mesh.receiveShadow = true; p.mesh.castShadow = true;
     levelGroup.add(p.mesh);
     syncPlatform(p);
     return p;
+  });
+
+  // spinning bars
+  bars = (L.bars || []).map(src => {
+    const b = { y: 0.45, ...src, angle: 0 };
+    b.group = new THREE.Group(); b.group.position.set(b.x, b.top, b.z);
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.18, b.y + 0.15, 12), barHubMat);
+    pole.position.y = (b.y + 0.15) / 2; pole.castShadow = true;
+    b.spin = new THREE.Group(); b.spin.position.y = b.y;
+    for (let k = 0; k < (b.arms || 1); k++) {
+      const arm = new THREE.Mesh(new THREE.BoxGeometry(b.len * 2, 0.2, 0.2), barMat);
+      arm.rotation.y = k * Math.PI / 2; arm.castShadow = true;
+      b.spin.add(arm);
+    }
+    b.group.add(pole, b.spin); levelGroup.add(b.group);
+    return b;
+  });
+
+  // wind zones + streaks so you can see the gusts
+  winds = (L.winds || []).map(src => {
+    const w = { ...src, gust: 0 };
+    w.mat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5, depthWrite: false });
+    const len = Math.hypot(w.fx, w.fz) || 1;
+    w.dir = [w.fx / len, w.fz / len];
+    w.streaks = [];
+    const geo = new THREE.BoxGeometry(1.4, 0.05, 0.05);
+    const spanX = Math.min(w.w, 16);
+    for (let i = 0; i < 70; i++) {
+      const m = new THREE.Mesh(geo, w.mat);
+      m.rotation.y = Math.atan2(-w.dir[1], w.dir[0]);
+      m.position.set(w.x + (Math.random() - 0.5) * spanX, -1 + Math.random() * 8, w.z + (Math.random() - 0.5) * w.d);
+      levelGroup.add(m); w.streaks.push(m);
+    }
+    w.spanX = spanX;
+    return w;
   });
 
   spikes = L.spikes.map(s => ({ ...s }));
@@ -924,7 +1216,17 @@ function buildLevel(L) {
 
   finish = L.finish;
   const last = levelIndex === LEVELS.length - 1;
-  trophy.visible = last; portal.visible = !last;
+  balloon.visible = last; portal.visible = !last;
+}
+
+// put every crumbled block back (on respawn)
+function resetCrumbles() {
+  for (const p of platforms) {
+    if (!p.crumble) continue;
+    p.cState = 'idle'; p.gone = false; p.fallV = 0; p.top = p.base.y; p.mesh.visible = true;
+    p.mesh.material[2].emissive.setRGB(0, 0, 0);
+    syncPlatform(p);
+  }
 }
 
 // ---------- Input ----------
@@ -1196,8 +1498,9 @@ function respawn() {
   const s = LEVELS[levelIndex].spawn;
   Object.assign(billy, { x: s.x, y: s.top + HY, z: s.z, vx: 0, vy: 0, vz: 0,
     yaw: 0, angle: 0, flipping: false, dead: false, grounded: false, ground: null,
-    charging: false, power: 0 });
+    charging: false, power: 0, floating: false });
   humStop();
+  resetCrumbles();
   camYaw = 0;
   $msg.textContent = '';
 }
@@ -1216,7 +1519,7 @@ function fmt(t) { return `${Math.floor(t / 60)}:${(t % 60).toFixed(1).padStart(4
 
 function reachFinish() {
   const last = levelIndex === LEVELS.length - 1;
-  burst(40, billy.x, billy.y + 1, billy.z, 10, last ? 0xf6c945 : 0x3ddc84);
+  burst(40, billy.x, billy.y + 1, billy.z, 10, last ? 0xe2574c : 0x3ddc84);
   billy.vx = billy.vz = 0; billy.flipping = false; billy.angle = 0;
   billy.charging = false; humStop();
   levelsCleared++;
@@ -1230,7 +1533,8 @@ function reachFinish() {
 
 function finishRun() {
   state = 'finished';
-  $msg.textContent = '';
+  billy.floating = true; billy.yaw = camYaw + Math.PI; // face the camera, grab the balloon, float away
+  $msg.innerHTML = `Billy got his balloon!<br><span class="sub ok">Up, up and away</span>`;
   [523, 659, 784, 1047, 1319].forEach((f, i) => setTimeout(() => beep(f, 0.3, 'triangle', 0.1), i * 130));
   document.exitPointerLock?.();
   // Achievement: only counts if every level of this run was actually cleared in this mode
@@ -1260,10 +1564,11 @@ function finishRun() {
   $('endTable').innerHTML =
     LEVELS.map((L, i) => `<tr><td>Level ${i + 1} · ${L.name}</td><td>${levelDeaths[i]} deaths</td></tr>`).join('') +
     `<tr class="total"><td>Total deaths</td><td>${deaths}</td></tr><tr class="total"><td>Total time</td><td>${fmt(runTime)}</td></tr>`;
-  setTimeout(() => { if (state === 'finished') show('end'); }, 1200);
+  setTimeout(() => { if (state === 'finished') { $msg.textContent = ''; show('end'); } }, 3200);
 }
 
 function overlaps(p) {
+  if (p.gone) return false; // crumbled away
   return billy.x + HX > p.minX && billy.x - HX < p.maxX &&
          billy.z + HX > p.minZ && billy.z - HX < p.maxZ &&
          billy.y + HY > p.minY && billy.y - HY < p.maxY;
@@ -1284,6 +1589,55 @@ function step(dt) {
     p.dx = p.x - ox; p.dy = p.top - oy; p.dz = p.z - oz;
     syncPlatform(p);
   }
+  // crumbling blocks: shake once stood on, then drop
+  for (const p of platforms) {
+    if (!p.crumble) continue;
+    if (p.cState === 'idle' && state === 'playing' && !billy.dead && billy.grounded && billy.ground === p) {
+      p.cState = 'shaking'; p.cT = T.crumbleTime;
+      beep(140, 0.3, 'sawtooth', 0.04, -60);
+    }
+    if (p.cState === 'shaking') {
+      p.cT -= dt;
+      const j = 0.04 + (1 - p.cT / T.crumbleTime) * 0.08;
+      p.mesh.position.set(p.x + (Math.random() - 0.5) * j, p.top - p.h / 2, p.z + (Math.random() - 0.5) * j);
+      const k = 1 - p.cT / T.crumbleTime; // glow hotter as it's about to go
+      p.mesh.material[2].emissive.setRGB(0.45 * k, 0.12 * k, 0);
+      if (Math.random() < dt * 25) burst(1, p.x + (Math.random() - 0.5) * p.w, p.top - 0.1, p.z + (Math.random() - 0.5) * p.d, 1.2, 0xb08050, 0.3);
+      if (p.cT <= 0) {
+        p.cState = 'falling'; p.gone = true; p.fallV = 0;
+        beep(90, 0.35, 'square', 0.05, -50);
+        burst(10, p.x, p.top, p.z, 3, 0xd2a86a, 0.4);
+      }
+    } else if (p.cState === 'falling') {
+      p.fallV += 25 * dt; p.top -= p.fallV * dt; syncPlatform(p);
+      if (p.top < p.base.y - 25) p.mesh.visible = false;
+    }
+  }
+  for (const p of platforms) {
+    // conveyor arrows scroll with the belt
+    if (p.conveyor) { const m = p.mesh.material[2].map; m.offset[p.conveyor.axis === 'x' ? 'x' : 'y'] -= Math.abs(p.conveyor.speed) * dt / 2.5; }
+    if (!p.blink) continue;
+    const bl = p.blink, t = ((levelTime / bl.period + (bl.phase || 0)) % 1 + 1) % 1;
+    const want = t < bl.on, warn = want && (bl.on - t) * bl.period < 0.6;
+    if (!want) p.gone = true;
+    else if (p.gone) { p.gone = false; if (overlaps(p)) p.gone = true; } // don't reappear around Billy
+    const op = p.gone ? 0.12 : warn ? (Math.sin(levelTime * 40) > 0 ? 1 : 0.35) : 1;
+    for (const m of [p.mesh.material[2], p.mesh.material[0]]) { m.opacity = op; m.depthWrite = op > 0.5; }
+    p.mesh.castShadow = !p.gone;
+  }
+  // spinning bars
+  for (const b of bars) { b.angle = levelTime * b.speed; b.spin.rotation.y = b.angle; }
+  // wind gusts pulse between 40% and 100%
+  for (const w of winds) {
+    w.gust = 0.4 + 0.6 * (0.5 + 0.5 * Math.sin(levelTime * Math.PI * 2 / w.period));
+    w.mat.opacity = 0.12 + 0.55 * w.gust;
+    const sp = (6 + 22 * w.gust) * dt, hx = w.spanX / 2, hz = w.d / 2;
+    for (const m of w.streaks) {
+      m.position.x += w.dir[0] * sp; m.position.z += w.dir[1] * sp;
+      if (m.position.x > w.x + hx) m.position.x -= w.spanX; else if (m.position.x < w.x - hx) m.position.x += w.spanX;
+      if (m.position.z > w.z + hz) m.position.z -= w.d; else if (m.position.z < w.z - hz) m.position.z += w.d;
+    }
+  }
   for (const p of pool) {
     if (p.life <= 0) continue;
     p.life -= dt; p.vy -= 25 * dt;
@@ -1298,6 +1652,7 @@ function step(dt) {
     if ((doneT -= dt) <= 0) loadLevel(levelIndex + 1);
     return;
   }
+  if (state === 'finished' && billy.floating) { billy.y += dt * 1.8; billy.yaw += dt * 0.6; return; } // up, up and away
   if (state !== 'playing') return;
   runTime += dt;
 
@@ -1312,6 +1667,7 @@ function step(dt) {
   // ride moving platform
   const g = billy.grounded && billy.ground;
   if (g) { billy.x += g.dx; billy.z += g.dz; billy.y += g.dy; }
+  if (g && g.conveyor) { billy[g.conveyor.axis] += g.conveyor.speed * dt; pushOut(g.conveyor.axis); }
 
   let ix = (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0);
   let iz = (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0);
@@ -1334,7 +1690,13 @@ function step(dt) {
   if (billy.grounded) {
     // can't walk while charging, only turn
     const walk = billy.charging ? 0 : T.walkSpeed;
-    billy.vx = mx * walk; billy.vz = mz * walk;
+    if (billy.ground && billy.ground.ice) {
+      // ice: speed drifts toward what you want instead of snapping to it
+      const k = Math.min(1, dt * T.iceGrip);
+      billy.vx += (mx * walk - billy.vx) * k; billy.vz += (mz * walk - billy.vz) * k;
+    } else {
+      billy.vx = mx * walk; billy.vz = mz * walk;
+    }
     if (M.tank) {
       // facing handled by tank controls above
     } else if (shiftLock()) {
@@ -1371,9 +1733,19 @@ function step(dt) {
 
   if (billy.flipping) {
     billy.flipT += dt;
-    billy.angle = Math.min(billy.flipT / billy.flipTime, 1) * Math.PI * 2;
+    const u = billy.flipT / billy.flipTime;
+    billy.angle = Math.min(u, 1) * Math.PI * 2; // flips stop at a clean 360
   }
   billy.vy -= T.gravity * dt;
+
+  // wind pushes Billy around while he's in the air
+  if (!billy.grounded) {
+    for (const w of winds) {
+      if (Math.abs(billy.x - w.x) < w.w / 2 && Math.abs(billy.z - w.z) < w.d / 2) {
+        billy.vx += w.fx * w.gust * dt; billy.vz += w.fz * w.gust * dt;
+      }
+    }
+  }
 
   billy.x += billy.vx * dt; pushOut('x');
   billy.z += billy.vz * dt; pushOut('z');
@@ -1384,7 +1756,8 @@ function step(dt) {
   for (const p of platforms) {
     if (!overlaps(p)) continue;
     if (billy.vy <= 0) {
-      billy.y = p.maxY + HY; billy.vy = 0; billy.grounded = true; billy.ground = p;
+      billy.y = p.maxY + HY;
+      billy.vy = 0; billy.grounded = true; billy.ground = p;
       if (billy.flipping) land();
       else if (!wasGrounded) burst(4, billy.x, billy.y - HY, billy.z, 2, 0xcfc6b0, 0.5);
     } else {
@@ -1398,6 +1771,17 @@ function step(dt) {
     if (billy.x + HX - 0.1 > s.x - s.w / 2 && billy.x - HX + 0.1 < s.x + s.w / 2 &&
         billy.z + HX - 0.1 > s.z - s.d / 2 && billy.z - HX + 0.1 < s.z + s.d / 2 &&
         billy.y - HY < s.top + 0.45) die('spikes');
+  }
+  for (const b of bars) {
+    // bar band sits b.y +/- 0.1m above its floor; check each arm as a line segment
+    if (billy.y - HY > b.top + b.y + 0.1 || billy.y + HY < b.top + b.y - 0.1) continue;
+    for (let k = 0; k < (b.arms || 1); k++) {
+      const a = b.angle + k * Math.PI / 2, dx = Math.cos(a), dz = -Math.sin(a);
+      const rx = billy.x - b.x, rz = billy.z - b.z;
+      const t = Math.max(-b.len, Math.min(b.len, rx * dx + rz * dz));
+      if (Math.hypot(rx - dx * t, rz - dz * t) < HX + 0.1) { die('bar'); break; }
+    }
+    if (billy.dead) break;
   }
   if (billy.y < -10) die('void');
   if (billy.dead) return;
@@ -1419,7 +1803,7 @@ function pushOut(axis) {
 
 function land() {
   billy.flipping = false;
-  const deg = billy.angle * 180 / Math.PI;
+  const deg = (billy.angle * 180 / Math.PI) % 360;
   if (Math.min(deg, 360 - deg) > T.safeLandDeg) { die('head'); return; }
   billy.angle = 0;
   beep(220, 0.06, 'square', 0.05);
@@ -1468,9 +1852,17 @@ function updateVisuals() {
   legL.rotation.x = legA; legR.rotation.x = sym ? legA : -legA;
   armL.rotation.x = armA; armR.rotation.x = sym ? armA : -armA;
 
+  balloonBody.rotation.z = Math.sin(time * 1.3) * 0.07;
+  balloonBody.rotation.x = Math.sin(time * 0.9) * 0.05;
+  if (billy.floating) {
+    // Billy holds the string over his head and drifts off into the sky
+    balloon.position.set(billy.x, billy.y + 0.55, billy.z);
+    balloonWeight.visible = false;
+  } else if (finish) {
+    balloon.position.set(finish.x, finish.top + Math.sin(time * 2) * 0.08, finish.z);
+    balloonWeight.visible = true;
+  }
   if (finish) {
-    trophy.position.set(finish.x, finish.top + 0.3 + Math.sin(time * 3) * 0.12, finish.z);
-    trophy.rotation.y = time * 1.5;
     portal.position.set(finish.x, finish.top + 1.2, finish.z);
     portal.rotation.y = Math.sin(time * 1.5) * 0.4;
     portal.children[1].material.opacity = 0.25 + Math.sin(time * 4) * 0.1;
@@ -1512,6 +1904,16 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 goMainMenu();
+// dev/testing shortcut: index.html?level=7 jumps straight to a level (Baby mode).
+// It can't unlock achievements: those need all levels cleared in one run.
+{
+  const lv = parseInt(new URLSearchParams(location.search).get('level'), 10);
+  if (lv >= 1 && lv <= LEVELS.length) {
+    startRun('baby'); levelsCleared = -99; loadLevel(lv - 1);
+    const cam = new URLSearchParams(location.search).get('cam'); // optional camera yaw for screenshots
+    if (cam) { camYaw = parseFloat(cam); camPitch = 0.55; }
+  }
+}
 camTarget.set(billy.x, billy.y, billy.z);
 requestAnimationFrame(frame);
 </script>
